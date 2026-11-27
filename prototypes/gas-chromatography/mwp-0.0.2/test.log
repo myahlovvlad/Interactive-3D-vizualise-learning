@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: HS mass balance and equilibrium
+ok 1 - HS mass balance and equilibrium
+  ---
+  duration_ms: 1.049781
+  type: 'test'
+  ...
+# Subtest: thermal step exact
+ok 2 - thermal step exact
+  ---
+  duration_ms: 0.218697
+  type: 'test'
+  ...
+# Subtest: isothermal analytical retention
+ok 3 - isothermal analytical retention
+  ---
+  duration_ms: 13.051721
+  type: 'test'
+  ...
+# Subtest: convergence and replay
+ok 4 - convergence and replay
+  ---
+  duration_ms: 20.576547
+  type: 'test'
+  ...
+# Subtest: FID integral and invalid input
+ok 5 - FID integral and invalid input
+  ---
+  duration_ms: 4.2619
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 107.945274

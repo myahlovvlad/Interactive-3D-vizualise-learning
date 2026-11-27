@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Виртуальная лаборатория ВЭЖХ</title>
+<style>
+:root{
+  --bg:#e9ecf1;
+  --panel:#fbfbfd;
+  --panel2:#f3f5f9;
+  --ink:#1e2b36;
+  --muted:#576775;
+  --line:#b9c3cf;
+  --accent:#0f7c74;
+  --accent2:#355c7d;
+  --gold:#c08a1b;
+  --warn:#c9642c;
+  --green:#1f8e58;
+  --shadow:0 10px 30px rgba(17,28,41,.12);
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#dfe5ee 0,#ebeff5 120px,#eef2f7 100%);color:var(--ink);font:14px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:1500px;margin:auto;padding:18px}
+header{background:linear-gradient(180deg,#f7f8fb,#eef2f6);border:1px solid #d7dee8;border-radius:18px;padding:18px 20px;box-shadow:var(--shadow)}
+header small{letter-spacing:1.8px;color:#6b7a88;font-weight:700}
+h1{margin:4px 0 8px;font-size:clamp(28px,4vw,46px);line-height:1.08}
+.sub{color:var(--muted);max-width:1100px}
+.layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(320px,1fr);gap:16px;margin-top:16px}
+.panel{background:var(--panel);border:1px solid #d7dee8;border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.panel h2{margin:0;padding:14px 16px;font-size:18px;border-bottom:1px solid #e4e9ef;background:linear-gradient(180deg,#fbfcfe,#f4f7fa)}
+.viewwrap{position:relative}
+canvas#view{width:100%;height:610px;display:block;background:radial-gradient(circle at 50% 12%,#ffffff 0,#f3f6fa 38%,#e7edf3 90%);cursor:grab;touch-action:none}
+.hud{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;max-width:65%}
+.badge{background:rgba(255,255,255,.86);backdrop-filter:blur(8px);border:1px solid #d5dde8;border-radius:999px;padding:6px 10px;color:#334250;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid #e4e9ef;background:var(--panel2)}
+button,select,input{font:inherit}
+button{cursor:pointer;border:1px solid #bcc8d5;background:white;color:#22313c;border-radius:10px;padding:9px 12px;transition:.15s ease box-shadow,.15s ease transform,.15s ease background}
+button:hover{box-shadow:0 6px 16px rgba(0,0,0,.08)} button:active{transform:translateY(1px)}
+button.primary{background:linear-gradient(180deg,#148f83,#0e756d);border-color:#0d6e67;color:white}
+button.on{background:#d8f0ed;border-color:#8ec9c2;color:#0f695f}
+button.slim{padding:7px 10px;font-size:13px}
+.toolbarRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-top:1px solid #e4e9ef}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px}
+.stat{background:linear-gradient(180deg,#fff,#f5f8fb);border:1px solid #dce4ed;border-radius:14px;padding:12px}
+.stat b{display:block;font-size:21px;margin-top:2px}
+.sideCol{display:grid;gap:16px;align-content:start}
+.tiles{padding:12px;display:grid;gap:8px}
+.tile{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;background:linear-gradient(180deg,#fff,#f7f9fc);padding:12px;border-radius:14px;border:1px solid #dce4ed}
+.tile .num{width:42px;flex:0 0 42px;height:42px;border-radius:12px;background:linear-gradient(180deg,#eff7f6,#d9efeb);border:1px solid #bfe2db;display:grid;place-items:center;font-weight:800;color:#0e7369}
+.tile b{display:block}
+.tile span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.info{padding:14px 16px;border-top:1px solid #e4e9ef;background:linear-gradient(180deg,#fcfcfd,#f8fafc)}
+.info h3{margin:0 0 8px;font-size:17px}.info p{margin:7px 0;color:#334250}
+.info .mini{margin-top:10px;padding:10px;border-radius:12px;background:#f2f7fa;border:1px solid #d9e4eb}
+.expGrid{padding:14px;display:grid;gap:10px}
+.expCard{border:1px solid #dce4ed;border-radius:16px;background:linear-gradient(180deg,#fff,#f7f9fc);padding:12px}
+.expCard h3{margin:0 0 6px;font-size:15px}
+.expCard p{margin:0 0 10px;color:var(--muted);font-size:13px}
+.labrow{display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:8px;margin:8px 0}
+.labrow output{font-variant-numeric:tabular-nums;color:#27404d;font-weight:700;min-width:74px;text-align:right}
+input[type=range]{width:100%}
+.chartWrap{padding:8px 14px 16px}
+svg#plot{width:100%;height:240px;display:block;background:linear-gradient(180deg,#ffffff,#fbfcfe);border:1px solid #dce4ed;border-radius:16px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:#4f606f;font-size:12px;padding:8px 2px 0}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+.modal{position:fixed;inset:0;background:rgba(22,33,46,.35);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+.modal.show{display:flex}
+.sheet{width:min(1040px,96vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid #d7dee8;border-radius:20px;box-shadow:0 24px 50px rgba(0,0,0,.25)}
+.sheet header{position:sticky;top:0;z-index:2;border-radius:20px 20px 0 0;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#fbfcfe,#f3f6fa);border-bottom:1px solid #e2e8f0;box-shadow:none}
+.sheet .body{padding:16px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(290px,.9fr);gap:16px}
+.card{border:1px solid #dce4ed;border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbfd);padding:14px}
+.card h4{margin:0 0 8px;font-size:16px}
+.card p,.card li{color:#334250}
+.card ul{padding-left:18px;margin:8px 0}
+#detailViz{width:100%;height:320px;display:block;background:radial-gradient(circle at 50% 8%,#fefefe,#eef4f7 70%,#e8eff4);border:1px solid #dce4ed;border-radius:16px}
+.eq{font:600 14px ui-monospace,SFMono-Regular,Consolas,monospace;background:#eff4f9;border:1px solid #d9e2ea;padding:8px 10px;border-radius:12px;overflow:auto}
+.footerNote{padding:14px 16px;color:#5c6b79;font-size:12px}
+actionbar{display:block}
+@media (max-width:1100px){.layout{grid-template-columns:1fr}.sheet .body{grid-template-columns:1fr}.statgrid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:720px){main{padding:10px} canvas#view{height:440px}.statgrid{grid-template-columns:1fr}.hud{max-width:90%}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <small>ВИРТУАЛЬНАЯ ЛАБОРАТОРИЯ ВЭЖХ / УЧЕБНЫЙ СИМУЛЯТОР / СТИЛЬ COLORFIGURES</small>
+    <h1>Виртуальная лаборатория ВЭЖХ 2.0</h1>
+    <div class="sub">Более реалистичная учебная модель высокоэффективного жидкостного хроматографа: модульный прибор, кликабельные узлы, анимированный путь пробы и подвижной фазы, физически правдоподобная хроматография и виртуальные эксперименты с перестраиваемой хроматограммой.</div>
+  </header>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>3D-модель прибора</h2>
+      <div class="viewwrap">
+        <canvas id="view" aria-label="Интерактивная модель ВЭЖХ"></canvas>
+        <div class="hud">
+          <div class="badge">Клик по модулю → принцип работы и мини-анимация</div>
+          <div class="badge" id="stageBadge">Стадия: Подготовка</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="run" class="primary">Запустить анализ</button>
+        <button id="pause">Пауза</button>
+        <button id="reset">Сброс</button>
+        <button id="xray" class="on">Прозрачный корпус</button>
+        <button id="labels" class="on">Подписи</button>
+        <button id="autorotate">Автовращение</button>
+        <button id="front">Вид спереди</button>
+        <button id="exp1" class="slim">Эксперимент: расход</button>
+        <button id="exp2" class="slim">Эксперимент: %B</button>
+      </div>
+      <div class="statgrid">
+        <div class="stat">Время<b id="timeRead">0.00 мин</b></div>
+        <div class="stat">Расход<b id="flowRead">1.00 мл/мин</b></div>
+        <div class="stat">Элюент<b id="phiRead">40 % B</b></div>
+        <div class="stat">Эффективность<b id="nRead">5000 тарелок</b></div>
+      </div>
+      <div class="toolbarRow"><span style="color:#596a79">Подсказка:</span> перетаскивайте модель для вращения, колесо мыши для масштаба. В прозрачном режиме видны реальные рабочие узлы и пути потоков.</div>
+    </section>
+
+    <aside class="sideCol">
+      <section class="panel">
+        <h2>Стадии метода</h2>
+        <div class="tiles" id="tiles"></div>
+        <div class="info" id="stageInfo"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Виртуальные эксперименты</h2>
+        <div class="expGrid">
+          <div class="expCard">
+            <h3>Экспериментальные параметры</h3>
+            <p>Изменяйте условия и наблюдайте смещение времени удерживания, изменение ширины пиков и разрешения.</p>
+            <div class="labrow"><label for="flow">Расход, мл/мин</label><input id="flow" type="range" min="0.4" max="1.6" step="0.05" value="1.00"><output id="flowOut">1.00</output></div>
+            <div class="labrow"><label for="phiB">Органика B, %</label><input id="phiB" type="range" min="20" max="80" step="1" value="40"><output id="phiBOut">40</output></div>
+            <div class="labrow"><label for="temp">Температура, °C</label><input id="temp" type="range" min="20" max="50" step="1" value="30"><output id="tempOut">30</output></div>
+            <div class="labrow"><label for="dp">Частицы, мкм</label><input id="dp" type="range" min="2" max="10" step="0.5" value="5"><output id="dpOut">5.0</output></div>
+            <div class="labrow"><label for="inj">Объём ввода, мкл</label><input id="inj" type="range" min="1" max="20" step="1" value="5"><output id="injOut">5</output></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+              <button id="presetFast">Быстрая изократика</button>
+              <button id="presetResolve">Макс. разрешение</button>
+              <button id="presetTeach">Учебный режим</button>
+            </div>
+          </div>
+          <div class="expCard" id="expResults"></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <h2>Хроматограмма и аналитические показатели</h2>
+    <div class="chartWrap">
+      <svg id="plot" viewBox="0 0 980 240" aria-label="Хроматограмма"></svg>
+      <div class="legend">
+        <span><i class="dot" style="background:#d66a34"></i>Компонент A</span>
+        <span><i class="dot" style="background:#2575a7"></i>Компонент B</span>
+        <span><i class="dot" style="background:#7d4db4"></i>Компонент C</span>
+        <span id="resolutionRead">Rs(B,C): 1.72</span>
+      </div>
+    </div>
+    <div class="footerNote">Учебная модель: градиентное удерживание рассчитывается численным интегрированием скорости зоны в приближении однородного состава. Эффективность описана условной зависимостью высоты тарелки от скорости. мЕОП* — условная шкала отклика. t<sub>R</sub>=t<sub>0</sub>(1+k), log k = log k<sub>w</sub> − S·φ − β(T−30), ширина пика связана с эффективностью N, а N уменьшается при росте размера частиц и неидеальном расходе. Это учебная физико-математическая аппроксимация, а не валидационная модель конкретного прибора.</div>
+  </section>
+<section class="panel" style="margin-top:16px"><h2>Конструктор метода и лабораторный практикум</h2><div class="expGrid"><div class="expCard"><div class="labrow"><label>Режим элюирования</label><select id="elution"><option value="iso">Изократический</option><option value="grad">Линейный градиент</option></select></div><div class="labrow"><label>Конечная B, %</label><input id="endB" type="range" min="20" max="95" value="75"><output id="endBOut">75</output></div><div class="labrow"><label>Градиент, мин</label><input id="gradTime" type="range" min="1" max="15" value="6"><output id="gradTimeOut">6</output></div><div class="labrow"><label>Длина волны, нм</label><input id="lambda" type="range" min="210" max="350" value="254"><output id="lambdaOut">254</output></div><div class="labrow"><label>Неисправность</label><select id="fault"><option value="none">Нет</option><option value="overload">Перегрузка</option><option value="carry">Перенос пробы</option><option value="bubble">Пузырьки</option><option value="noise">Шум</option><option value="poor">Потеря эффективности</option></select></div><svg id="gradientPlot" viewBox="0 0 640 100" style="width:100%;height:100px"></svg><div id="pressureInfo"></div></div><div class="expCard"><h3>Практикум</h3><select id="learnMode"><option value="learn">Обучение</option><option value="practice">Практикум</option><option value="exam">Экзамен</option></select> <select id="mission"><option value="resolve">Разделить все три аналита: Rs ≥ 1,5</option><option value="fast">Завершить разделение ≤ 6 мин, Rs ≥ 1,5</option><option value="pressure">Rs ≥ 1,5 при давлении ≤ 150 бар</option></select><p id="missionInfo"></p><textarea id="hypothesis" rows="3" style="width:100%;padding:10px" placeholder="Гипотеза и обоснование выбранных условий"></textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="evaluate">Проверить условия</button><button id="saveTrial">Сохранить опыт</button><button id="exportTrials">Экспорт CSV</button><button id="clearTrials">Очистить журнал</button></div><p id="assessment"></p><div style="overflow:auto"><table id="trialTable" style="width:100%;border-collapse:collapse;font-size:12px"></table></div></div></div></section></main>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <header>
+      <div>
+        <div style="font-size:12px;color:#657789;font-weight:700;letter-spacing:1px">КЛИКАБЕЛЬНЫЙ УЗЕЛ</div>
+        <div id="detailTitle" style="font-size:22px;font-weight:800"></div>
+      </div>
+      <button id="closeModal">Закрыть</button>
+    </header>
+    <div class="body">
+      <div class="card">
+        <canvas id="detailViz"></canvas>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="detailPlay" class="primary">Запустить мини-анимацию</button>
+          <button id="detailReset">Сбросить</button>
+        </div>
+      </div>
+      <div style="display:grid;gap:16px">
+        <div class="card">
+          <h4>Принцип работы</h4>
+          <p id="detailText"></p>
+        </div>
+        <div class="card">
+          <h4>Физико-математическая модель</h4>
+          <div class="eq" id="detailEq"></div>
+          <p id="detailEqText" style="margin-top:10px"></p>
+        </div>
+        <div class="card">
+          <h4>Что наблюдать в реальном приборе</h4>
+          <ul id="detailList"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const state={yaw:0.64,pitch:0.42,zoom:1,xray:true,labels:true,autorotate:false,running:false,t:0,last:0,drag:null,selected:null,detailAnim:false,detailTime:0,
+  flow:1.00,phiB:40,temp:30,dp:5,inj:5};
+const stages=[
+  {name:'Элюенты', short:'Растворители A и B', at:0, note:'Растворители подаются из резервуаров, проходят дегазацию, затем попадают в плунжерные насосы. В модели A — вода с буфером, B — органический модификатор.'},
+  {name:'Насос и смеситель', short:'Формирование потока', at:10, note:'Два высоконапорных насоса подают растворители. После насосов потоки объединяются в смесителе, образуя заданный состав подвижной фазы.'},
+  {name:'Автосамплер', short:'Ввод пробы', at:21, note:'Игла отбирает пробу из виалы. Шестипортовый клапан переводит дозирующую петлю из режима загрузки в режим инжекции.'},
+  {name:'Колонка', short:'Разделение в C18', at:33, note:'В колонке с насадочным слоем сорбента компоненты распределяются между подвижной и неподвижной фазами и потому мигрируют с разными средними скоростями.'},
+  {name:'Детектор', short:'УФ-регистрация', at:61, note:'Элюирующие зоны проходят через проточную ячейку. По закону Бугера–Ламберта–Бера поглощение преобразуется в аналитический сигнал.'},
+  {name:'Обработка данных', short:'Хроматограмма', at:84, note:'Сигнал дискретизируется, строится хроматограмма, а затем рассчитываются времена удерживания, площади, высоты и разрешение.'}
+];
+const modules={
+  solvents:{key:'solvents',label:'Элюенты и дегазатор', color:'#61a9c3', text:'Резервуары содержат компоненты подвижной фазы. Дегазатор удаляет растворённые газы, чтобы предотвратить кавитацию насосов, образование пузырей и шум базовой линии детектора.', eq:'Q = const;\nP(cavitation) ↓ при удалении растворённых газов\nСуммарный поток: F = F_A + F_B', eqText:'Дегазация напрямую не меняет хроматографическое удерживание, но обеспечивает стабильность расхода и давления. Состав смеси определяется расходами каналов A и B.', list:['Отсутствие пузырьков в линиях','Стабильное давление системы','Меньший шум базовой линии'], anchor:[-50,0,300]},
+  pumps:{key:'pumps',label:'Плунжерные насосы', color:'#bf8c37', text:'Плунжерные насосы высокого давления создают стабильный объёмный расход. При возвратно-поступательном движении плунжер заполняет и вытесняет жидкость; демпфирование снижает пульсации.', eq:'F = \u0394V/\u0394t\nP \u2248 \u0394p\nДля изократики: \u03c6_B = F_B/(F_A+F_B)', eqText:'В практическом приборе расход выбирается так, чтобы достичь компромисса между скоростью анализа, давлением и эффективностью колонки.', list:['Пульсации давления','Работа обратных клапанов','Зависимость давления от вязкости и расхода'], anchor:[-28,-8,222]},
+  autosampler:{key:'autosampler',label:'Автосамплер и инжекционный клапан', color:'#b56b9b', text:'Автосамплер дозирует строго определённый объём образца. В шестипортовом клапане петля сначала заполняется пробой, затем переключается в магистраль, и пробка пробы уносится подвижной фазой в колонку.', eq:'n = C_sample \u00d7 V_inj\nПерегрузка колонки возможна при слишком большом V_inj', eqText:'Чем больше объём ввода, тем выше сигнал, но избыточный объём может вызвать уширение и деформацию пиков.', list:['Положение иглы','Объём дозирующей петли','Промывка иглы и перенос остатков пробы'], anchor:[-38,0,160]},
+  column:{key:'column',label:'Колонка C18', color:'#d7aa6f', text:'Колонка содержит сорбент C18. Молекулы аналитов многократно переходят между подвижной фазой и гидрофобной неподвижной фазой. Более удерживаемые вещества проводят большую долю времени в неподвижной фазе и выходят позже.', eq:'t_R = t_0(1+k)\nlog k = log k_w - S\u03c6 - \u03b2(T-30)\nN = L/H; H = d_p(2 + 1/u + u)', eqText:'Это учебное приближение отражает снижение удерживания при росте доли органики и температуры. Эффективность уменьшается при увеличении размера частиц и при сильном отклонении расхода от оптимума.', list:['Рост давления при уменьшении d_p','Сдвиг удерживания при росте %B','Изменение разрешения при изменении N'], anchor:[-8,-25,110]},
+  detector:{key:'detector',label:'УФ-детектор', color:'#6e94b0', text:'УФ-детектор измеряет ослабление света в проточной ячейке. Когда зона аналита проходит через ячейку, концентрация в оптическом пути возрастает и возникает пик.', eq:'A = \u03b5lc\nI = I_0\u00d710^{-A}', eqText:'При постоянной длине оптического пути l сигнал пропорционален концентрации. Поэтому форма пика отражает профиль концентрации в ячейке во времени.', list:['Базовая линия и шум','Максимум поглощения на выбранной длине волны','Пузырьки как источник артефактов'], anchor:[-10,-25,48]},
+  data:{key:'data',label:'Система обработки данных', color:'#5a6f88', text:'Система сбора данных дискретизирует сигнал детектора, фильтрует шум и строит хроматограмму. Из пиков рассчитывают времена удерживания, высоты, площади и разрешение.', eq:'R_s = 2(t_{R2}-t_{R1})/(w_1+w_2)\nA_{peak} \propto n_{analyte}', eqText:'Разрешение оценивает, насколько хорошо разделены соседние пики. Площадь пика в первом приближении пропорциональна количеству вещества.', list:['Частота дискретизации','Интегрирование площадей','Критерии приемлемого разделения'], anchor:[124,18,54]}
+};
+const analytes=[
+  {name:'A', color:'#d66a34', logkw:1.28, S:1.55, beta:0.012, eps:1.00},
+  {name:'B', color:'#2575a7', logkw:1.63, S:1.78, beta:0.011, eps:0.84},
+  {name:'C', color:'#7d4db4', logkw:1.95, S:1.98, beta:0.010, eps:0.92}
+];
+const view=$('view'), vctx=view.getContext('2d'); let VW=0,VH=0,faces=[],hotspots=[],tags=[];
+function resizeCanvas(cv,h){const r=cv.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);cv.width=Math.round(r.width*d);cv.height=Math.round(h*d);cv.style.height=h+'px';const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return c}
+function updateInputs(){['flow','phiB','temp','dp','inj'].forEach(id=>$(id+'Out').textContent=$(id).value);state.flow=+$('flow').value;state.phiB=+$('phiB').value;state.temp=+$('temp').value;state.dp=+$('dp').value;state.inj=+$('inj').value;$('flowRead').textContent=state.flow.toFixed(2)+' мл/мин';$('phiRead').textContent=state.phiB+' % B';$('nRead').textContent=Math.round(calcExperiment().N)+' тарелок';updatePlot()} 
+['flow','phiB','temp','dp','inj'].forEach(id=>$(id).addEventListener('input',updateInputs));
+$('presetFast').onclick=()=>{ $('flow').value=1.35; $('phiB').value=62; $('temp').value=36; $('dp').value=5; $('inj').value=5; updateInputs(); };
+$('presetResolve').onclick=()=>{ $('flow').value=0.75; $('phiB').value=34; $('temp').value=28; $('dp').value=3; $('inj').value=3; updateInputs(); };
+$('presetTeach').onclick=()=>{ $('flow').value=1.00; $('phiB').value=40; $('temp').value=30; $('dp').value=5; $('inj').value=5; updateInputs(); };
+$('exp1').onclick=()=>{ $('flow').value=Math.min(1.6,(+$('flow').value+0.2).toFixed(2)); updateInputs(); };
+$('exp2').onclick=()=>{ $('phiB').value=Math.min(80,+$('phiB').value+5); updateInputs(); };
+function stageIndex(){let idx=0; for(let i=0;i<stages.length;i++) if(state.t>=stages[i].at) idx=i; return idx; }
+function syncStageInfo(){ const s=stages[stageIndex()]; $('stageBadge').textContent='Стадия: '+s.name; $('stageInfo').innerHTML=`<h3>${s.name}</h3><p>${s.note}</p><div class="mini"><b>${s.short}</b><div style="margin-top:6px;color:#556575">Нажмите на плитку или на соответствующий модуль прибора, чтобы быстро перейти к этой стадии и получить объяснение.</div></div>`; $('timeRead').textContent=(state.t/15).toFixed(2)+' мин'; document.querySelectorAll('.tile').forEach((el,i)=>el.classList.toggle('on', i===stageIndex())); }
+$('tiles').innerHTML=stages.map((s,i)=>`<button class="tile" data-i="${i}"><div class="num">0${i+1}</div><div><b>${s.name}</b><span>${s.short}</span></div></button>`).join('');
+document.querySelectorAll('.tile').forEach(el=>el.onclick=()=>{state.t=stages[+el.dataset.i].at; state.running=true; syncStageInfo();});
+function project(p){ let [x,y,z]=p; const cy=Math.cos(state.yaw), sy=Math.sin(state.yaw); const u=cy*x-sy*y; const v=sy*x+cy*y; const scale=Math.min(VW/600,VH/470)*state.zoom; return [VW*.48+u*scale,VH*.57+(v*Math.sin(state.pitch)-(z-150)*Math.cos(state.pitch))*scale,v*Math.cos(state.pitch)+z*Math.sin(state.pitch)] }
+function face(pts, fill, alpha=1, stroke='#20303b', width=1){ const q=pts.map(project); faces.push({q,fill,alpha,stroke,width,d:q.reduce((s,p)=>s+p[2],0)/q.length}); }
+function hexToRgb(h){const n=parseInt(h.slice(1),16); return [n>>16,(n>>8)&255,n&255] }
+function rgb(a){ return `rgb(${a.map(v=>Math.round(v)).join(',')})` }
+function shade(h,k){ return rgb(hexToRgb(h).map(v=>Math.max(0,Math.min(255,v*k)))) }
+function metalColor(base, f){ return shade(base, f); }
+function box(x,y,z,w,d,h,c,a=1, stroke='#2b3a43'){ const p=[[x,y,z],[x+w,y,z],[x+w,y+d,z],[x,y+d,z],[x,y,z+h],[x+w,y,z+h],[x+w,y+d,z+h],[x,y+d,z+h]]; [[0,3,2,1],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[4,5,6,7]].forEach((f,i)=>face(f.map(j=>p[j]), shade(c,[.72,.9,.78,.88,.81,1.08][i]), a, stroke, .95)); return p; }
+function rod(a,b,r,c,a1=1,n=14){ let v=b.map((x,i)=>x-a[i]), l=Math.hypot(...v); if(!l) return; v=v.map(x=>x/l); let u=Math.abs(v[2])>.9?[1,0,0]:[-v[1],v[0],0]; let ul=Math.hypot(...u); u=u.map(x=>x/ul); let w=[v[1]*u[2]-v[2]*u[1], v[2]*u[0]-v[0]*u[2], v[0]*u[1]-v[1]*u[0]]; const ring=p=>Array.from({length:n},(_,i)=>p.map((x,j)=>x+r*(u[j]*Math.cos(i*2*Math.PI/n)+w[j]*Math.sin(i*2*Math.PI/n)))); const A=ring(a),B=ring(b); for(let i=0;i<n;i++) face([A[i],A[(i+1)%n],B[(i+1)%n],B[i]], shade(c,.86+.18*Math.cos(i*2*Math.PI/n)), a1, '#22323d', .4); face(A,shade(c,.96),a1,'#22323d',.35); face(B,shade(c,1.05),a1,'#22323d',.35); }
+function tube(points, c, r=1.4){ for(let i=1;i<points.length;i++) rod(points[i-1], points[i], r, c,1,10); }
+function spot(point,color,r=3){ rod([point[0],point[1],point[2]-r],[point[0],point[1],point[2]+r],r,color,1,10) }
+function linePoint(path,f){ const segs=path.slice(1).map((p,i)=>Math.hypot(...p.map((v,j)=>v-path[i][j]))); const total=segs.reduce((a,b)=>a+b,0); let d=Math.max(0,Math.min(1,f))*total; for(let i=0;i<segs.length;i++){ if(d<=segs[i]||i===segs.length-1){ const t=d/segs[i]||0; return path[i].map((v,j)=>v+(path[i+1][j]-v)*t);} d-=segs[i]; } return path[path.length-1]; }
+function labelAt(p,text,key){ tags.push({p,text,key}); }
+function registerHotspot(key,p,r=26){ const q=project(p); hotspots.push({key,x:q[0],y:q[1],r,screen:q}); }
+const paths={
+  A:[[-72,2,318],[-72,-6,252],[-72,-9,226],[-53,-9,226],[-10,-25,212]],
+  B:[[4,2,318],[4,-6,252],[4,-9,226],[17,-9,226],[-10,-25,212]],
+  pre:[[-10,-25,212],[46,-25,212],[46,-25,172],[46,-25,169]],
+  toCol:[[46,-25,169],[64,-25,169],[64,-25,105],[-70,-25,105]],
+  col:[[-70,-25,105],[48,-25,105]],
+  toDet:[[48,-25,105],[64,-25,105],[64,-25,48],[3,-25,48]],
+  waste:[[3,-25,48],[94,-25,48],[94,22,48],[135,22,48],[135,22,82]]
+};
+function drawMachine(){ faces=[]; tags=[]; hotspots=[]; // table
+  box(-120,-72,0,290,144,8,'#c9b79d',1,'#42535d');
+  // cast floor hint drawn later
+  // chassis and shelves
+  box(-101,-52,8,188,104,12,'#667781');
+  const levels=[16,78,140,202];
+  levels.forEach((z,i)=>{
+    box(-96,-47,z,178,94,4,'#81939c');
+    box(-96,42,z+4,178,5,58,'#90a4ab', state.xray?.18:1);
+    box(-96,-47,z+4,5,89,58,'#a6bcc2', state.xray?.14:1);
+    box(77,-47,z+4,5,89,58,'#879ca3', state.xray?.14:1);
+    box(-96,-47,z+58,178,94,4,'#dce6e8', state.xray?.18:1);
+    box(-96,-47,z+4,178,5,54,'#d9e2e6', state.xray?.10:1);
+    if(!state.xray){
+      box(-85,-50,z+11,122,3,35,'#f3f6f8');
+      box(48,-50,z+31,22,4,12,'#304a55');
+      box(49,-50,z+18,6,3,5,'#43b175');
+      box(57,-50,z+18,6,3,5,'#c9a931');
+    }
+  });
+  // rear waste bottle
+  rod([135,22,8],[135,22,74],20,'#a8c3aa',.75,18); rod([135,22,74],[135,22,82],10,'#506368',.9,14);
+  labelAt([135,22,66],'Отходы','data'); registerHotspot('data',[135,22,66],20);
+  // solvent bottles
+  [['#91cade',-68,'A'],['#e1be86',4,'B']].forEach(([c,x,name])=>{
+    rod([x,0,258],[x,0,307],18,c,.72,18); rod([x,0,307],[x,0,315],9,'#d1dadc',.95,14); rod([x,0,315],[x,0,320],12,'#365b66',1,12);
+    rod([x,0,262],[x,0,289],16,c,.92,16);
+    if(state.xray){ box(x-12,-16,242,24,24,14,'#5b8790'); }
+    labelAt([x,0,302],`Элюент ${name}`,'solvents');
+  });
+  registerHotspot('solvents',[-30,0,294],28);
+  // pumps and mixer
+  if(state.xray){
+    [[-68,'#5a737b'],[4,'#5a737b']].forEach(([x,c])=>{ box(x-15,-8,202,30,28,21,c); rod([x,-9,225],[x+13,-9,225],7,'#c6d0cd'); rod([x-24+Math.sin(state.t*2.5)*4,-9,225],[x-8,-9,225],3,'#d59d4b'); rod([x-34,-9,225],[x-24,-9,225],8,'#728c94'); });
+    rod([-10,-25,205],[-10,-25,217],7,'#d59f42',1,12); box(-16,-33,200,12,16,6,'#556a72');
+    labelAt([-68,-9,226],'Насос A','pumps'); labelAt([4,-9,226],'Насос B','pumps'); labelAt([-10,-25,212],'Смеситель','pumps');
+    registerHotspot('pumps',[-30,-12,220],30);
+  } else { registerHotspot('pumps',[-25,-48,226],24); }
+  // autosampler
+  if(state.xray){
+    box(-82,-12,142,86,40,4,'#91a5a1');
+    for(let x=-72;x<=-12;x+=15){ for(let y of [0,16]){ rod([x,y,146],[x,y,159],4,'#d4b4db',.94,10); rod([x,y,159],[x,y,162],4.8,'#5b6771',1,10); } }
+    box(-84,27,145,98,5,44,'#607b80'); box(-84,-6,186,98,36,3,'#667e84');
+    const nz=state.t>=16&&state.t<22?171-10*Math.sin((state.t-16)/6*Math.PI):171;
+    rod([-38,0,186],[-38,0,nz],3.1,'#a6b7ba',1,10); rod([-38,0,nz],[-38,0,nz-9],1.2,'#35444d',1,8);
+    rod([46,-25,159],[46,-25,179],9,'#c69755',1,12); tube([[-38,0,186],[-38,-15,186],[46,-15,186],[46,-25,179]],'#bc759d',1.1);
+    labelAt([-38,0,158],'Игла / виалы','autosampler'); labelAt([46,-25,169],'Шестипортовый клапан','autosampler');
+    registerHotspot('autosampler',[-30,3,160],30);
+  } else registerHotspot('autosampler',[-38,-48,168],24);
+  // column oven / column
+  if(state.xray){
+    box(-82,-10,82,154,34,5,'#c68758'); box(-82,24,86,154,5,44,'#deb08c');
+    for(let x of [-68,40]) box(x,-32,88,5,14,17,'#7e9296');
+    rod(paths.col[0],paths.col[1],8,'#d4ad81',.4,20);
+    for(let x=-65;x<48;x+=5) for(let y of [-28,-23]) spot([x,y,105+(x%3)],'#cfaa78',1.7);
+    for(let x of [-70,48]) rod([x-3,-25,105],[x+3,-25,105],8,'#768f94',1,12);
+    labelAt([-10,-25,113],'Колонка C18','column'); labelAt([4,22,92],'Термостат','column');
+    registerHotspot('column',[-5,-15,108],32);
+  } else registerHotspot('column',[-5,-48,108],26);
+  // detector
+  if(state.xray){
+    box(-76,-12,22,148,38,5,'#83979c');
+    rod([-65,-25,48],[-35,-25,48],10,'#e2b65e',1,16); box(-32,-32,40,20,14,14,'#8b9f9f'); box(-6,-33,39,17,16,18,'#87c6d1'); box(23,-33,39,14,16,18,'#6d8087');
+    tube([[-35,-25,48],[-6,-25,48]],'#e7be56',1.1); tube([[11,-25,48],[23,-25,48]],'#e7be56',1.1);
+    labelAt([-50,-25,48],'УФ-лампа','detector'); labelAt([2,-25,48],'Проточная ячейка','detector'); labelAt([30,-25,48],'Фотодиод','detector');
+    registerHotspot('detector',[-8,-18,48],30);
+  } else registerHotspot('detector',[-5,-48,48],25);
+  // display/data module front display
+  box(95,-8,28,48,28,30,'#96aab5'); box(102,-4,38,31,20,16,'#243844'); labelAt([120,6,58],'Система данных','data'); registerHotspot('data',[122,8,57],22);
+  // tubing and moving fronts
+  const tubeDefs=[['#5ab2cf',paths.A],['#d4a24d',paths.B],['#49a08d',paths.pre],['#49a08d',paths.toCol],['#49a08d',paths.toDet],['#49a08d',paths.waste]];
+  tubeDefs.forEach(([c,p])=>tube(p,c,1.45));
+  if(state.xray){
+    const flowPaths=[paths.A,paths.B,paths.pre,paths.toCol,paths.col,paths.toDet,paths.waste];
+    flowPaths.forEach((path,pi)=>{ if(state.t>2+pi*1.2){ for(let j=0;j<3;j++) spot(linePoint(path,(state.t*.11+j/3)%1),'#f0faf9',2.1); } });
+    const ex=window.cachedExperiment||calcExperiment();
+    ex.peaks.forEach((pk,i)=>{
+      let p=null;
+      if(state.t<20) p=null;
+      else if(state.t<30) p=linePoint(paths.toCol, (state.t-20)/10 + i*0.03);
+      else if(state.t<pk.arrive) p=linePoint(paths.col, Math.min(.98,(state.t-30)/(pk.arrive-30) + i*0.02));
+      else if(state.t<pk.arrive+7) p=linePoint(paths.toDet, (state.t-pk.arrive)/7);
+      else if(state.t<pk.arrive+15) p=linePoint(paths.waste, (state.t-pk.arrive-7)/8);
+      if(p) spot(p, analytes[i].color, 4.4);
+    });
+  }
+}
+function drawLabels(){ if(!state.labels) return; const groups=[[],[]]; tags.forEach(t=>{const q=project(t.p); groups[q[0]>VW/2?1:0].push({...t,q});}); groups.forEach((g,side)=>{ g.sort((a,b)=>a.q[1]-b.q[1]); let prev=14; g.forEach(t=>{ const yy=Math.max(prev+22, Math.min(VH-18, t.q[1])); prev=yy; const x=side?VW-10:10; vctx.font='600 11px Inter,system-ui'; const width=vctx.measureText(t.text).width+14; const left=side?x-width:x; vctx.beginPath(); vctx.moveTo(t.q[0],t.q[1]); vctx.lineTo(side?left:left+width,yy); vctx.strokeStyle='rgba(83,100,116,.65)'; vctx.lineWidth=.85; vctx.stroke(); vctx.fillStyle=(state.selected===t.key)?'#d7f0eb':'rgba(255,255,255,.92)'; vctx.strokeStyle='#aab8c6'; vctx.lineWidth=1; roundRect(vctx,left,yy-9,width,18,8,true,true); vctx.fillStyle='#20303b'; vctx.fillText(t.text,left+7,yy+4); }); }); }
+function roundRect(c,x,y,w,h,r,fill,stroke){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); if(fill)c.fill(); if(stroke)c.stroke(); }
+function drawHotspots(){ hotspots.forEach(h=>{ const active=state.selected===h.key; vctx.beginPath(); vctx.arc(h.x,h.y, active?9:6, 0, Math.PI*2); vctx.fillStyle=active?'#0f7c74':'rgba(255,255,255,.92)'; vctx.fill(); vctx.strokeStyle=active?'#084f4a':'#7f92a2'; vctx.lineWidth=1.5; vctx.stroke(); if(active){ vctx.beginPath(); vctx.arc(h.x,h.y, 14+2*Math.sin(performance.now()/200),0,Math.PI*2); vctx.strokeStyle='rgba(15,124,116,.28)'; vctx.lineWidth=2; vctx.stroke(); } }); }
+function drawView(){ const rect=view.getBoundingClientRect(); const d=Math.min(devicePixelRatio||1,2); if(view.width!==Math.round(rect.width*d)||view.height!==Math.round(rect.height*d)){ view.width=Math.round(rect.width*d); view.height=Math.round(rect.height*d); } vctx.setTransform(d,0,0,d,0,0); VW=rect.width; VH=rect.height; vctx.clearRect(0,0,VW,VH); 
+  vctx.fillStyle='rgba(95,126,154,.18)'; roundRect(vctx,90,VH-108,VW-190,42,20,true,false);
+  drawMachine();
+  faces.sort((a,b)=>a.d-b.d); faces.forEach(f=>{ vctx.globalAlpha=f.alpha; vctx.beginPath(); f.q.forEach((p,i)=>i?vctx.lineTo(p[0],p[1]):vctx.moveTo(p[0],p[1])); vctx.closePath(); vctx.fillStyle=f.fill; vctx.fill(); vctx.strokeStyle=f.stroke; vctx.lineWidth=f.width; vctx.stroke(); });
+  vctx.globalAlpha=1;
+  // screen data accents
+  const p1=project([104,-3,50]), p2=project([129,-3,50]), p3=project([129,13,50]), p4=project([104,13,50]);
+  vctx.beginPath(); [p1,p2,p3,p4].forEach((p,i)=>i?vctx.lineTo(p[0],p[1]):vctx.moveTo(p[0],p[1])); vctx.closePath(); vctx.fillStyle='#1f3744'; vctx.fill(); vctx.strokeStyle='#2f4f5e'; vctx.stroke();
+  vctx.fillStyle='#86e0b3'; vctx.font='600 10px ui-monospace'; vctx.fillText('УФ',p1[0]+8,p1[1]+12); vctx.fillText((state.flow).toFixed(2),p1[0]+30,p1[1]+12);
+  drawLabels(); drawHotspots();
+}
+function calcExperiment(){
+ const t0=.42/state.flow, phi=state.phiB/100, temp=state.temp, fault=$('fault').value, gradient=$('elution').value==='grad', end=+$('endB').value/100, tg=+$('gradTime').value, wave=+$('lambda').value;
+ const composition=t=>gradient?phi+(end-phi)*Math.min(1,Math.max(0,(t-.15/state.flow)/tg)):phi;
+ const u=state.flow/.95, H=state.dp*(2+1/u+u), N=150000/H*(fault==='poor'?.18:1);
+ const peaks=analytes.map((a,i)=>{const kAt=t=>10**(a.logkw-a.S*composition(t)-a.beta*(temp-30));let tR=t0*(1+kAt(0));if(gradient){let x=0,t=0;while(x<1&&t<180){x+=.005/(t0*(1+kAt(t)));t+=.005;}tR=t;}const sigma=Math.sqrt((tR/Math.sqrt(N))**2+(state.inj/1000/state.flow/Math.sqrt(12))**2)*(fault==='overload'?2.4:1);const response=Math.exp(-.5*((wave-[254,275,230][i])/[32,28,23][i])**2);const area=(3+i)*state.inj*a.eps*response/state.flow;return {name:a.name,color:a.color,k:kAt(tR),tR,sigma,height:area/(Math.sqrt(2*Math.PI)*sigma),area,arrive:30+tR*10};}).sort((a,b)=>a.tR-b.tR);
+ const rs=(a,b)=>2*(b.tR-a.tR)/(4*(a.sigma+b.sigma));const eta=t=> (.89*(1-composition(t))+.37*composition(t)+.35*Math.sin(Math.PI*composition(t)))*Math.exp(-.023*(temp-25))*1e-3;
+ const pressure=t=>180*eta(t)*.15*(state.flow*1e-6/60)/(Math.PI*(.0046/2)**2)*(1-.4)**2/(.4**3*(state.dp*1e-6)**2)/1e5;
+ const pmax=Math.max(...Array.from({length:51},(_,i)=>pressure(i*tg/50)));return {t0,N,peaks,RsAB:rs(peaks[0],peaks[1]),RsBC:rs(peaks[1],peaks[2]),pressure:pmax,composition,gradient,fault,wave};}
+function updatePlot(){const r=window.cachedExperiment=calcExperiment();$('nRead').textContent=Math.round(r.N)+' тарелок';$('resolutionRead').textContent='Минимальное Rs: '+Math.min(r.RsAB,r.RsBC).toFixed(2);$('expResults').innerHTML=`<h3>Расчётные результаты</h3><p>t₀ = ${r.t0.toFixed(2)} мин; N ≈ ${Math.round(r.N)}; Δp ≤ ${r.pressure.toFixed(0)} бар</p><p>Rs соседних пиков: ${r.RsAB.toFixed(2)} / ${r.RsBC.toFixed(2)}</p>${r.peaks.map(p=>`<div>Пик ${p.name}: tR = ${p.tR.toFixed(2)} мин; σ = ${p.sigma.toFixed(3)} мин</div>`).join('')}`;
+ const maxT=Math.max(2,...r.peaks.map(p=>p.tR+5*p.sigma)), maxY=Math.max(1,...r.peaks.map(p=>p.height))*1.25;let d='';const signal=t=>r.peaks.reduce((sum,p)=>{let z=(t-p.tR)/p.sigma;return sum+p.height*Math.exp(-.5*z*z)+(r.fault==='carry'?.04*p.height*Math.exp(-.5*((t-p.tR-.5)/p.sigma)**2):0)},0)+(r.fault==='noise'?maxY*.025*Math.sin(t*311)*Math.cos(t*173):0)+(r.fault==='bubble'?maxY*.3*Math.exp(-((t-maxT*.45)**2)/.003):0);
+ for(let j=0;j<=1400;j++){let t=j/1400*maxT;d+=(j?' L ':'M ')+(58+882*j/1400)+' '+(200-170*signal(t)/maxY);} $('plot').innerHTML=`<path d="M58 15 V200 H940" stroke="#344554" fill="none"/>${Array.from({length:7},(_,i)=>`<text x="${58+147*i}" y="220" font-size="12">${(maxT*i/6).toFixed(1)}</text>`).join('')}<text x="10" y="18" font-size="12">мЕОП*</text><text x="900" y="237" font-size="12">мин</text><path d="${d}" fill="none" stroke="#0f7c74" stroke-width="2"/>${r.peaks.map(p=>`<text x="${58+882*p.tR/maxT}" y="${Math.max(14,190-170*p.height/maxY)}" fill="${p.color}">${p.name}</text>`).join('')}`;
+ ['endB','gradTime','lambda'].forEach(id=>$(id+'Out').textContent=$(id).value);let g='';for(let i=0;i<=100;i++)g+=(i?' L ':'M ')+(35+570*i/100)+' '+(85-70*r.composition(maxT*i/100));$('gradientPlot').innerHTML=`<path d="M35 10 V85 H605" fill="none" stroke="#8497a7"/><path d="${g}" stroke="#b88626" stroke-width="3" fill="none"/><text x="2" y="15">%B</text><text x="550" y="99">${maxT.toFixed(1)} мин</text>`;$('pressureInfo').textContent='Оценка максимального перепада давления: '+r.pressure.toFixed(0)+' бар. Колонка 150 × 4,6 мм; порозность 0,40; модель Козени–Кармана; вязкость условная.';}
+function hitTest(x,y){ let best=null,bestD=1e9; hotspots.forEach(h=>{ const d=Math.hypot(x-h.x,y-h.y); if(d<h.r && d<bestD){best=h; bestD=d;} }); return best; }
+view.onpointerdown=e=>{ const r=view.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top; const hit=hitTest(x,y); if(hit){ openDetail(hit.key); return; } state.drag=[e.clientX,e.clientY]; view.setPointerCapture(e.pointerId); };
+view.onpointermove=e=>{ if(state.drag){ state.yaw += (e.clientX-state.drag[0])*.009; state.pitch = Math.max(-.18, Math.min(1.25, state.pitch+(e.clientY-state.drag[1])*.006)); state.drag=[e.clientX,e.clientY]; } };
+view.onpointerup=view.onpointercancel=()=>state.drag=null; view.addEventListener('wheel',e=>{ e.preventDefault(); state.zoom=Math.max(.68, Math.min(1.85, state.zoom-e.deltaY*.001)); },{passive:false});
+$('run').onclick=()=>{ if(state.t>=Math.max(96,...(window.cachedExperiment||calcExperiment()).peaks.map(p=>p.arrive+15))) state.t=0; state.running=true; };
+$('pause').onclick=()=>state.running=false; $('reset').onclick=()=>{ state.running=false; state.t=0; syncStageInfo(); }; $('xray').onclick=()=>{ state.xray=!state.xray; $('xray').classList.toggle('on',state.xray);}; $('labels').onclick=()=>{ state.labels=!state.labels; $('labels').classList.toggle('on',state.labels);}; $('autorotate').onclick=()=>{ state.autorotate=!state.autorotate; $('autorotate').classList.toggle('on',state.autorotate);}; $('front').onclick=()=>{ state.yaw=0; state.pitch=.12; };
+const modal=$('modal'); $('closeModal').onclick=()=>modal.classList.remove('show'); modal.onclick=e=>{ if(e.target===modal) modal.classList.remove('show'); };
+let detailKey='solvents';
+function openDetail(key){ detailKey=key; state.selected=key; const m=modules[key]; $('detailTitle').textContent=m.label; $('detailText').textContent=m.text; $('detailEq').textContent=m.eq; $('detailEqText').textContent=m.eqText; $('detailList').innerHTML=m.list.map(x=>`<li>${x}</li>`).join(''); modal.classList.add('show'); state.detailTime=0; state.detailAnim=false; drawDetail(); }
+$('detailPlay').onclick=()=>{ state.detailAnim=true; }; $('detailReset').onclick=()=>{ state.detailTime=0; state.detailAnim=false; drawDetail(); };
+const dcv=$('detailViz'), dctx=dcv.getContext('2d');
+function drawArrow(c,x1,y1,x2,y2,col){ c.strokeStyle=col; c.fillStyle=col; c.lineWidth=3; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); const ang=Math.atan2(y2-y1,x2-x1); c.beginPath(); c.moveTo(x2,y2); c.lineTo(x2-12*Math.cos(ang-.35), y2-12*Math.sin(ang-.35)); c.lineTo(x2-12*Math.cos(ang+.35), y2-12*Math.sin(ang+.35)); c.closePath(); c.fill(); }
+function drawDetail(){ const r=dcv.getBoundingClientRect(); const d=Math.min(devicePixelRatio||1,2); dcv.width=Math.round(r.width*d); dcv.height=Math.round(r.height*d); dctx.setTransform(d,0,0,d,0,0); const W=r.width,H=r.height; dctx.clearRect(0,0,W,H); dctx.fillStyle='#f7fbfd'; dctx.fillRect(0,0,W,H); dctx.strokeStyle='#d9e4ec'; for(let i=0;i<7;i++){ dctx.beginPath(); dctx.moveTo(0,i*H/6); dctx.lineTo(W,i*H/6); dctx.stroke(); }
+  dctx.scale(W/660,H/320); const t=state.detailTime; dctx.font='600 12px Inter,system-ui'; dctx.fillStyle='#1f2c38';
+  if(detailKey==='solvents'){
+    roundRect(dctx,40,42,78,170,18,true,true); dctx.fillStyle='rgba(92,176,206,.55)'; roundRect(dctx,44,80+8*Math.sin(t),70,124,14,true,false); dctx.fillStyle='#1f2c38'; dctx.fillText('A',74,34); dctx.fillText('B',186,34);
+    dctx.fillStyle='#f0d2a1'; roundRect(dctx,150,42,78,170,18,true,true); dctx.fillStyle='rgba(228,183,106,.55)'; roundRect(dctx,154,108-8*Math.sin(t),70,96,14,true,false);
+    roundRect(dctx,278,92,110,70,14,true,true); dctx.fillStyle='#dfe8ef'; dctx.fillRect(296,114,74,28); dctx.fillStyle='#1f2c38'; dctx.fillText('Дегазатор',304,132); drawArrow(dctx,118,100,278,118,'#4ea9cd'); drawArrow(dctx,228,118,278,136,'#c8912c');
+    dctx.fillText('Удаление растворённых газов',36,258);
+  } else if(detailKey==='pumps'){
+    roundRect(dctx,48,108,106,90,16,true,true); roundRect(dctx,224,108,106,90,16,true,true); dctx.fillText('Насос A',74,100); dctx.fillText('Насос B',250,100);
+    const shift=18*Math.sin(t*2.2); dctx.fillStyle='#a9b9c4'; dctx.fillRect(62+shift,132,58,16); dctx.fillRect(238-shift,162,58,16); dctx.fillStyle='#d09135'; dctx.fillRect(54,130,16,20); dctx.fillRect(298,160,16,20);
+    roundRect(dctx,384,118,112,72,14,true,true); dctx.fillStyle='#1f2c38'; dctx.fillText('Смеситель',410,158); drawArrow(dctx,154,140,384,140,'#50a9d0'); drawArrow(dctx,330,170,384,170,'#c8912c'); drawArrow(dctx,496,154,620,154,'#1d8b70'); dctx.fillText('Поршни создают стабильный объёмный поток',48,252);
+  } else if(detailKey==='autosampler'){
+    for(let i=0;i<2;i++) for(let j=0;j<4;j++){ dctx.fillStyle='rgba(207,169,218,.55)'; roundRect(dctx,56+j*42,130+i*42,24,24,8,true,true); }
+    dctx.fillText('Виалы',64,114); const y=130-56*Math.max(0,Math.sin(Math.min(1,t)*Math.PI)); dctx.strokeStyle='#7a8d97'; dctx.lineWidth=4; dctx.beginPath(); dctx.moveTo(278,68); dctx.lineTo(278,y); dctx.stroke(); dctx.beginPath(); dctx.moveTo(278,y); dctx.lineTo(278,y+24); dctx.strokeStyle='#3e4f5a'; dctx.lineWidth=2; dctx.stroke();
+    roundRect(dctx,360,122,124,64,14,true,true); dctx.fillStyle='#1f2c38'; dctx.fillText('Петля / клапан',386,158); drawArrow(dctx,280,y+24,360,154,'#b56b9b'); drawArrow(dctx,484,154,614,154,'#1d8b70'); dctx.fillText('Петля заполняется пробой и затем включается в поток',54,254);
+  } else if(detailKey==='column'){
+    roundRect(dctx,46,116,560,44,20,true,true); dctx.fillStyle='#d7ad7c'; roundRect(dctx,54,124,544,28,14,true,false); dctx.fillStyle='#bd915c';
+    for(let i=0;i<28;i++) for(let j=0;j<2;j++){ dctx.beginPath(); dctx.arc(72+i*18,134+j*9,3.4,0,Math.PI*2); dctx.fill(); }
+    ['#d66a34','#2575a7','#7d4db4'].forEach((c,i)=>{ const x=70+(80+80*i)+Math.min(350,(t*100)*(1-0.12*i)); dctx.fillStyle=c; dctx.beginPath(); dctx.ellipse(x,138,18,10,0,0,Math.PI*2); dctx.fill(); });
+    dctx.fillStyle='#1f2c38'; dctx.fillText('Колонка с частицами C18',54,102); dctx.fillText('Более удерживаемые зоны движутся медленнее',54,254);
+  } else if(detailKey==='detector'){
+    roundRect(dctx,56,120,84,38,12,true,true); dctx.fillStyle='#d8b056'; dctx.fillRect(64,130,24,18); dctx.fillStyle='#1f2c38'; dctx.fillText('Лампа',74,110); drawArrow(dctx,140,139,258,139,'#d9b24d');
+    roundRect(dctx,258,108,92,62,14,true,true); dctx.fillStyle='rgba(113,195,209,.45)'; dctx.fillRect(278,121,54,34); dctx.fillStyle='#1f2c38'; dctx.fillText('Ячейка',284,98); const amp=20+24*Math.max(0,Math.sin(t*2)); dctx.strokeStyle='#1f8e58'; dctx.lineWidth=3; dctx.beginPath(); dctx.moveTo(350,139); for(let i=0;i<180;i++){ const x=350+i; const y=139-Math.exp(-0.5*((i-60)/15)**2)*amp; dctx.lineTo(x,y); } dctx.stroke(); dctx.fillText('Концентрация в ячейке → аналитический пик',54,254);
+  } else if(detailKey==='data'){
+    dctx.strokeStyle='#c7d3de'; dctx.lineWidth=1.2; dctx.beginPath(); dctx.moveTo(56,220); dctx.lineTo(600,220); dctx.moveTo(56,42); dctx.lineTo(56,220); dctx.stroke();
+    dctx.strokeStyle='#0f7c74'; dctx.lineWidth=3; dctx.beginPath(); dctx.moveTo(60,218); for(let i=0;i<520;i++){ const x=60+i; const y=218 - (30*Math.exp(-0.5*((i-90)/18)**2)+52*Math.exp(-0.5*((i-250)/20)**2)+40*Math.exp(-0.5*((i-380)/23)**2)); dctx.lineTo(x,y); } dctx.stroke(); ['A','B','C'].forEach((s,i)=>{ dctx.fillStyle=analytes[i].color; dctx.fillText(s,[145,304,436][i], [155,120,142][i]); }); dctx.fillStyle='#1f2c38'; dctx.fillText('Интегрирование и расчёт параметров',54,30);
+  }
+}
+function animate(ts){ const dt=Math.min(.05,(ts-state.last)/1000||0); state.last=ts; if(state.running){ state.t=Math.min(Math.max(96,...(window.cachedExperiment||calcExperiment()).peaks.map(p=>p.arrive+15)),state.t+dt*12); if(state.t>=Math.max(96,...(window.cachedExperiment||calcExperiment()).peaks.map(p=>p.arrive+15))) state.running=false; } if(state.autorotate) state.yaw += dt*.22; if(state.detailAnim){ state.detailTime += dt; drawDetail(); } drawView(); syncStageInfo(); requestAnimationFrame(animate); }
+let trials=[];try{trials=JSON.parse(localStorage.getItem('hplcTrials2')||'[]')}catch(e){};
+function trial(){let r=calcExperiment();return {date:new Date().toISOString(),mode:$('elution').value,flow:state.flow,B:state.phiB,endB:+$('endB').value,gradientTime:+$('gradTime').value,temp:state.temp,dp:state.dp,inj:state.inj,wavelength:r.wave,fault:r.fault,pressure:+r.pressure.toFixed(1),Rs:+Math.min(r.RsAB,r.RsBC).toFixed(3),lastPeak:+Math.max(...r.peaks.map(p=>p.tR)).toFixed(3),hypothesis:$('hypothesis').value};}
+function renderTrials(){let keys=['mode','flow','B','pressure','Rs','lastPeak','fault'];$('trialTable').innerHTML='<tr>'+keys.map(k=>'<th>'+({mode:'Режим',flow:'Расход',B:'% B',pressure:'Давление',Rs:'Разрешение',lastPeak:'Последний пик',fault:'Неисправность'}[k]||k)+'</th>').join('')+'</tr>';for(let r of trials){let tr=document.createElement('tr');for(let k of keys){let td=document.createElement('td');td.textContent=k==='mode'?({iso:'Изократический',grad:'Градиент'}[r[k]]||r[k]):k==='fault'?({none:'Нет',overload:'Перегрузка',carry:'Перенос пробы',bubble:'Пузырьки',noise:'Шум',poor:'Потеря эффективности'}[r[k]]||r[k]):r[k];tr.append(td)}$('trialTable').append(tr)}}
+function persist(){try{localStorage.setItem('hplcTrials2',JSON.stringify(trials))}catch(e){$('assessment').textContent+=' Сохранение в браузере недоступно; экспорт CSV доступен.'}renderTrials()}
+$('saveTrial').onclick=()=>{trials.push(trial());persist()};$('clearTrials').onclick=()=>{if(confirm('Очистить журнал?')){trials=[];persist()}};$('exportTrials').onclick=()=>{let keys=Object.keys(trial()),csv=[keys.join(';'),...trials.map(r=>keys.map(k=>'"'+String(r[k]).replaceAll('"','""')+'"').join(';'))].join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='HPLC_experiments.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('evaluate').onclick=()=>{let r=trial(),m=$('mission').value,ok=r.Rs>=1.5&&(m!=='fast'||r.lastPeak<=6)&&(m!=='pressure'||r.pressure<=150);$('assessment').textContent=(ok?'Критерии выполнены.':'Критерии не выполнены.')+` Rs = ${r.Rs}; последний пик = ${r.lastPeak} мин; давление = ${r.pressure} бар.`};
+function modeChange(){let m=$('learnMode').value;$('missionInfo').textContent=m==='learn'?'Изменяйте один фактор за раз и сравнивайте опыты.':m==='practice'?'Сформулируйте гипотезу, подберите условия, сохраните серию опытов и оцените критерии.':'Самостоятельно подберите условия и проверьте результат.';$('expResults').style.display=m==='exam'?'none':'';}
+$('learnMode').onchange=modeChange;['elution','endB','gradTime','lambda','fault'].forEach(id=>$(id).addEventListener('input',updatePlot));renderTrials();modeChange();updateInputs(); syncStageInfo(); requestAnimationFrame(animate);
+</script>
+</body>
+</html>

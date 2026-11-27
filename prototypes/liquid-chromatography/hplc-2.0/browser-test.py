@@ -1,0 +1,4 @@
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=b.new_page(viewport={'width':1280,'height':900});errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.route('http**',lambda route:route.abort());page.set_content((Path(__file__).resolve().parent/'index.html').read_text());page.wait_for_function("document.querySelector('#plot path') !== null",timeout=5000);page.locator('#presetFast').click();page.locator('#xray').click();page.locator('#evaluate').click();assert 'Критерии' in page.locator('#assessment').inner_text();assert not errors,errors;print('PASS: offline document, initial plot, fast preset, transparent shell toggle, exercise evaluation; no page errors.');b.close()

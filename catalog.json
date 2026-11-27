@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "instruments": [
+    {
+      "id": "gc",
+      "title": "Газовая хроматография",
+      "description": "Опубликован учебный прототип ПИД; ТКД, ЭЗД, МС, ПФД, ТИД — отдельные будущие модели",
+      "status": "prototype",
+      "path": "releases/mwp-0.0.2/index.html"
+    },
+    {
+      "id": "hplc",
+      "title": "Высокоэффективная жидкостная хроматография",
+      "description": "Импортированный учебный прототип ВЭЖХ 2.0, УФ-детектор",
+      "status": "prototype",
+      "path": "prototypes/liquid-chromatography/hplc-2.0/index.html"
+    },
+    {
+      "id": "uvvis",
+      "title": "УФ/видимая спектрофотометрия",
+      "description": "Одно- и двухлучевые схемы, монохроматор, фотометрия и спектры",
+      "status": "planned",
+      "path": null
+    },
+    {
+      "id": "ic",
+      "title": "Ионная хроматография",
+      "description": "Ионообменная колонка, элюент, подавитель, кондуктометрический детектор",
+      "status": "planned",
+      "path": null
+    },
+    {
+      "id": "ce",
+      "title": "Капиллярный электрофорез",
+      "description": "Высоковольтный источник, капилляр, электроосмос, детектирование",
+      "status": "planned",
+      "path": null
+    },
+    {
+      "id": "pcr",
+      "title": "Амплификатор",
+      "description": "Термоциклирование, ПЦР и количественная ПЦР как отдельный режим",
+      "status": "planned",
+      "path": null
+    },
+    {
+      "id": "seq",
+      "title": "Секвенатор",
+      "description": "Выбрать технологию: капиллярное секвенирование или NGS",
+      "status": "planned",
+      "path": null
+    },
+    {
+      "id": "other",
+      "title": "Другие аналитические приборы",
+      "description": "Флуориметрия, ИК, ААС, ICP, масс-спектрометрия и электрохимия",
+      "status": "planned",
+      "path": null
+    }
+  ]
+}
