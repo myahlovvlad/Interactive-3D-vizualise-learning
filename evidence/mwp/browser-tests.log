@@ -1,0 +1,1 @@
+PASS: offline HTML document (set_content; file:// blocked by browser policy in test environment); actual Web Worker; 3 peaks; changed input; export and exact replay; corrupt import; mobile layout; virtual time; cancel; Worker fallback; no page errors or network requests

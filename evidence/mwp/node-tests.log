@@ -1,0 +1,73 @@
+
+> interactive-stem-laboratory@0.0.1 test
+> npm run build && node --test tests/*.test.cjs
+
+
+> interactive-stem-laboratory@0.0.1 build
+> node tools/build.cjs
+
+Built dist/index.html 39091 bytes
+TAP version 13
+# Subtest: isothermal retention and positive mass
+ok 1 - isothermal retention and positive mass
+  ---
+  duration_ms: 8.134621
+  type: 'test'
+  ...
+# Subtest: zero noise integrated FID mass response
+ok 2 - zero noise integrated FID mass response
+  ---
+  duration_ms: 6.446535
+  type: 'test'
+  ...
+# Subtest: split mass response and temperature trends
+ok 3 - split mass response and temperature trends
+  ---
+  duration_ms: 13.834671
+  type: 'test'
+  ...
+# Subtest: seed replay and invalid inputs
+ok 4 - seed replay and invalid inputs
+  ---
+  duration_ms: 19.549439
+  type: 'test'
+  ...
+# Subtest: independent default numeric oracle
+ok 5 - independent default numeric oracle
+  ---
+  duration_ms: 3.682965
+  type: 'test'
+  ...
+# Subtest: method schema and runtime bounds agree
+ok 6 - method schema and runtime bounds agree
+  ---
+  duration_ms: 0.858258
+  type: 'test'
+  ...
+# Subtest: application can use a separate solver adapter
+ok 7 - application can use a separate solver adapter
+  ---
+  duration_ms: 0.391288
+  type: 'test'
+  ...
+# Subtest: resource bounds and immutable core results
+ok 8 - resource bounds and immutable core results
+  ---
+  duration_ms: 10.575561
+  type: 'test'
+  ...
+# Subtest: visualization is tied to analytical residence time
+ok 9 - visualization is tied to analytical residence time
+  ---
+  duration_ms: 1.253571
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 133.103721

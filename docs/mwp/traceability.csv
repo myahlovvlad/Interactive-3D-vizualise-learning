@@ -1,0 +1,9 @@
+requirement,adr,status,test,evidence,limitation
+REQ-SCI-002,025;027,PARTIAL,independent default numeric oracle,evidence/mwp/node-tests.log,Only isothermal capillary; EPC/network absent
+REQ-SCI-004,023;024;025,PARTIAL,isothermal retention and positive mass,evidence/mwp/node-tests.log,No programmed retention or independent transport oracle
+REQ-SCI-005,031,PARTIAL,zero noise integrated FID mass response,evidence/mwp/node-tests.log,Synthetic Gaussian model
+REQ-VIS-001,037;042;098,PARTIAL,visualization is tied to analytical residence time,evidence/mwp/node-tests.log,Only schematic; no canonical 3D graph or target renderers
+REQ-DATA-001,062;092;115;116,PARTIAL,seed replay and invalid inputs;e2e,evidence/mwp/browser-tests.log,Replay not full integrity storage
+REQ-OFF-001,048;100,PARTIAL,offline document smoke,evidence/mwp/browser-tests.log,No file navigation or complete LAB-008
+REQ-PERF-001,047;109,NOT_TESTED,physical target pending,,8 GB machine not measured
+REQ-DOC-001,090;093;099;118,PARTIAL,schema and injected solver tests,evidence/mwp/node-tests.log,Baseline full coverage pending G0

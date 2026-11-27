@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"CommonJS","lib":["ES2022","DOM","DOM.Iterable"],"strict":true,"noUncheckedIndexedAccess":true,"rootDir":".","outDir":".build","noEmitOnError":true},"include":["packages/**/*.ts","domains/**/*.ts","apps/web/**/*.ts"]}

@@ -1,0 +1,8 @@
+UTC 2026-11-27T14:46:15Z
+v22.16.0
+10.9.2
+Version 5.8.3
+Python 3.13.5
+Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)
+Linux x86_64
+Target physical 8GB laptop not measured. No file:// acceptance due browser policy.

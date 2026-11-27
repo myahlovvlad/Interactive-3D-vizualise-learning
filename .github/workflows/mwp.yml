@@ -1,0 +1,17 @@
+name: MWP checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - run: npm ci
+      - run: npm install --global typescript@5.8.3
+      - run: python3 docs/baselines/gc-alpha-v1/tools/check_baseline.py
+      - run: npm test
+      - run: cmp dist/index.html releases/mwp-0.0.1/index.html

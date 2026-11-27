@@ -1,0 +1,261 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GC Virtual Laboratory · MWP</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f1f5f8;color:#182c3f;font:15px/1.5 system-ui,sans-serif}header{background:#19364a;color:white;padding:22px max(20px,calc((100vw - 1200px)/2));}h1{font-size:25px;margin:0}header p{margin:6px 0 0;color:#d0e2e8}main{max-width:1200px;margin:20px auto;padding:0 16px;display:grid;grid-template-columns:310px minmax(0,1fr);gap:16px}.panel{background:white;border:1px solid #d5e0e8;border-radius:12px;padding:18px;min-width:0}h2{font-size:17px;margin:0 0 14px}form{display:grid;gap:8px}label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}input[type=number]{width:105px;border:1px solid #b9c9d4;border-radius:5px;padding:7px;background:#fff;color:#183346}button,.import{font:inherit;cursor:pointer;background:#126d70;color:white;border:0;border-radius:6px;padding:9px 14px}button:disabled{opacity:.5;cursor:default}.secondary,.import{background:#edf3f6;color:#19364a}.actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.notice{font-size:13px;color:#536579;background:#eef5f7;padding:10px;border-left:3px solid #126d70}canvas{width:100%;height:auto;border:1px solid #dae4eb;border-radius:6px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:8px 4px;border-bottom:1px solid #e1e9ee}input[type=range]{width:100%}.flow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;margin:12px 0}.flow span{border:1px solid #b5cbd6;background:#edf5f5;padding:7px;border-radius:5px}.muted{color:#536579;font-size:13px}#status{min-height:24px;overflow-wrap:anywhere}@media(max-width:720px){main{grid-template-columns:1fr}table{font-size:11px}header{padding:18px}}
+</style></head><body><header><h1>GC Virtual Laboratory</h1><p>MWP 0.0.1 · First Chromatogram · изотермическая модель</p></header><main><section class="panel"><h2>Параметры метода</h2><form id="method" onsubmit="return false"></form><div class="actions"><button id="run">Рассчитать</button><button class="secondary" id="cancel" disabled>Отмена</button></div><div id="status" role="status"></div><p class="notice">Условные компоненты A–C. Параметры удерживания и отклика синтетические. Не для реального количественного анализа.</p><div class="actions"><button class="secondary" id="save" disabled>Экспорт JSON</button><button class="secondary" id="load">Повтор из JSON</button><input id="import" type="file" accept=".json,application/json" hidden></div></section><section class="panel"><h2>Хроматографический эксперимент</h2><div class="flow"><span>Газ-носитель</span> → <span>Ввод / Split</span> → <span>Колонка</span> → <span>FID</span></div><p id="metrics" class="muted"></p><svg viewBox="0 0 650 64" width="100%" role="img" aria-label="Условное положение центров хроматографических зон по длине колонки"><rect x="25" y="17" width="600" height="32" rx="8" fill="#edf5f5" stroke="#9ab4bd"/><path d="M25 25H625M25 41H625" stroke="#c69b6b" stroke-width="2"/><text x="25" y="12" font-size="10" fill="#536579">Вход</text><text x="625" y="12" text-anchor="end" font-size="10" fill="#536579">FID</text><g id="zone-A" visibility="hidden"><circle cy="30" r="7" fill="#126d70"/><text y="33" font-size="8" text-anchor="middle" fill="white">A</text></g><g id="zone-B" visibility="hidden"><circle cy="35" r="7" fill="#326d9e"/><text y="38" font-size="8" text-anchor="middle" fill="white">B</text></g><g id="zone-C" visibility="hidden"><circle cy="40" r="7" fill="#a76a33"/><text y="43" font-size="8" text-anchor="middle" fill="white">C</text></g><text x="325" y="62" text-anchor="middle" font-size="10" fill="#536579">Условно развёрнутая колонка · только центры зон</text></svg><p id="zones" class="muted" aria-live="off"></p><canvas id="plot" width="900" height="320" aria-label="Хроматограмма; рассчитанные пики приведены в таблице"></canvas><label for="time">Время воспроизведения <span id="clock"></span></label><input id="time" type="range" min="0" max="1" value="0" step="any" disabled><h2>Расчётные параметры пиков</h2><table><thead><tr><th>Компонент</th><th>tR, мин</th><th>k</th><th>N</th><th>Площадь, пА·с</th></tr></thead><tbody id="peaks"></tbody></table><p class="muted">Площадь — модельная интегральная характеристика без шума, не результат автоматического интегрирования. Расход приведён к температуре колонки и выходному давлению. Схема не является инженерной 3D-моделью.</p></section></main><script>const WORKER_SOURCE="(function(){const modules={\"apps/web/main.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nconst contracts_1 = require(\"../../domains/gas-chromatography/contracts\");\nconst experiment_1 = require(\"../../domains/gas-chromatography/experiment\");\nconst model_1 = require(\"../../domains/gas-chromatography/model\");\nfunction el(id) { const node = document.getElementById(id); if (!node)\n    throw Error('Missing ' + id); return node; }\nconst form = el('method'), status = el('status'), table = el('peaks'), metrics = el('metrics'), plot = el('plot'), run = el('run'), save = el('save'), input = el('import'), time = el('time');\nconst cancel = el('cancel');\nconst service = (0, experiment_1.createGCService)();\nlet last, worker, token = 0;\nconst labels = { lengthM: 'Длина колонки, м', diameterMm: 'Диаметр, мм', temperatureC: 'Температура, °C', inletKPa: 'Вход, кПа абс.', outletKPa: 'Выход, кПа абс.', split: 'Split', noisePA: 'Шум, пА', seed: 'Seed' };\nfor (const key of Object.keys(contracts_1.DEFAULT)) {\n    const l = document.createElement('label'), field = document.createElement('input');\n    l.textContent = labels[key];\n    field.name = key;\n    field.type = 'number';\n    field.step = key === 'seed' ? '1' : 'any';\n    field.min = String(contracts_1.LIMITS[key][0]);\n    field.max = String(contracts_1.LIMITS[key][1]);\n    field.value = String(contracts_1.DEFAULT[key]);\n    field.required = true;\n    l.append(field);\n    form.append(l);\n}\nfunction values() { return Object.fromEntries(Array.from(new FormData(form).entries()).map(([k, v]) => [k, String(v).trim() === '' ? NaN : Number(v)])); }\nfunction setFields(m) { for (const [k, v] of Object.entries(m)) {\n    const f = form.elements.namedItem(k);\n    if (f instanceof HTMLInputElement)\n        f.value = String(v);\n} }\nfunction draw() { if (!last)\n    return; const r = last, c = plot.getContext('2d'); if (!c)\n    return; const w = plot.width, h = plot.height, left = 54, right = w - 20, top = 22, bottom = h - 38; const max = Math.max(.1, r.signal.reduce((a, b) => Math.max(a, b), 0)), min = r.signal.reduce((a, b) => Math.min(a, b), 0), end = (r.signal.length - 1) * r.intervalS, t = Number(time.value); c.clearRect(0, 0, w, h); c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.font = '12px system-ui'; c.fillStyle = '#536579'; c.strokeStyle = '#dbe4ec'; for (let i = 0; i <= 5; i++) {\n    const y = bottom - (bottom - top) * i / 5, x = left + (right - left) * i / 5;\n    c.beginPath();\n    c.moveTo(left, y);\n    c.lineTo(right, y);\n    c.stroke();\n    c.fillText((min + (max - min) * i / 5).toFixed(2), 4, y + 4);\n    c.fillText((end * i / 5 / 60).toFixed(1), x - 8, h - 12);\n} c.fillText('пА', 5, 13); c.fillText('мин', right - 20, h - 2); c.strokeStyle = '#126d70'; c.lineWidth = 1.6; c.beginPath(); const n = Math.min(r.signal.length - 1, Math.floor(t / r.intervalS)); for (let i = 0; i <= n; i++) {\n    const x = left + (right - left) * i / (r.signal.length - 1), y = bottom - (bottom - top) * (r.signal[i] - min) / (max - min);\n    if (i === 0)\n        c.moveTo(x, y);\n    else\n        c.lineTo(x, y);\n} c.stroke(); for (const p of r.peaks) {\n    if (p.retentionS <= t) {\n        const x = left + (right - left) * p.retentionS / end;\n        c.fillStyle = '#263a4d';\n        c.fillText(p.name, x - 4, top + 14);\n    }\n} el('clock').textContent = (t / 60).toFixed(2) + ' / ' + (end / 60).toFixed(2) + ' мин'; const snapshot = (0, model_1.visualizationSnapshot)(r, t); for (const z of snapshot.zones) {\n    const marker = document.getElementById('zone-' + z.name);\n    marker?.setAttribute('transform', 'translate(' + (25 + 600 * z.fraction) + ' 0)');\n    marker?.setAttribute('visibility', z.exited ? 'hidden' : 'visible');\n} el('zones').textContent = snapshot.zones.map(z => z.name + ': ' + (z.exited ? 'центр вышел' : (z.fraction * r.method.lengthM).toFixed(2) + ' м')).join(' · '); }\nfunction present(reply, mode) { run.disabled = false; cancel.disabled = true; if (!reply.ok) {\n    status.textContent = reply.error;\n    return;\n} last = reply.data; const r = last; setFields(r.method); status.textContent = 'Готово · ' + mode + ' · синтетические параметры'; save.disabled = false; metrics.textContent = `Расход ${r.flowMlMin.toFixed(3)} мл/мин · tM ${(r.deadTimeS / 60).toFixed(3)} мин · скорость ${r.velocityCmS.toFixed(2)} см/с`; table.replaceChildren(); for (const p of r.peaks) {\n    const tr = document.createElement('tr');\n    for (const v of [p.name, (p.retentionS / 60).toFixed(3), p.k.toFixed(3), p.plates.toFixed(0), p.areaPAS.toFixed(4)]) {\n        const td = document.createElement('td');\n        td.textContent = v;\n        tr.append(td);\n    }\n    table.append(tr);\n} time.max = String((r.signal.length - 1) * r.intervalS); time.value = time.max; time.disabled = false; draw(); }\nfunction execute(request, replay = false) { const current = ++token; worker?.terminate(); run.disabled = true; cancel.disabled = false; save.disabled = true; last = undefined; el(\"zones\").textContent = \"\"; for (const k of [\"A\", \"B\", \"C\"])\n    document.getElementById(\"zone-\" + k)?.setAttribute(\"visibility\", \"hidden\"); time.disabled = true; table.replaceChildren(); metrics.textContent = \"\"; plot.getContext(\"2d\")?.clearRect(0, 0, plot.width, plot.height); status.textContent = 'Расчёт…'; try {\n    const url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));\n    worker = new Worker(url);\n    URL.revokeObjectURL(url);\n    worker.onmessage = (e) => { if (token === current) {\n        worker?.terminate();\n        worker = undefined;\n        present(e.data, replay ? 'повтор из параметров · Web Worker' : 'Web Worker');\n    } };\n    worker.onerror = () => { if (token === current) {\n        worker?.terminate();\n        worker = undefined;\n        present(service.run(request), replay ? 'повтор из параметров · локальный fallback' : 'локальный fallback');\n    } };\n    worker.postMessage(request);\n}\ncatch {\n    present(service.run(request), replay ? 'повтор из параметров · локальный fallback' : 'локальный fallback');\n} }\nform.oninput = () => { if (last)\n    status.textContent = 'Параметры изменены · показан предыдущий расчёт'; };\nfunction start() { if (form.reportValidity())\n    execute(values()); }\nrun.onclick = start;\ncancel.onclick = () => { if (cancel.disabled)\n    return; token++; worker?.terminate(); worker = undefined; run.disabled = false; cancel.disabled = true; status.textContent = 'Расчёт отменён'; };\nel('load').onclick = () => input.click();\ntime.oninput = draw;\nsave.onclick = () => { if (!last)\n    return; const url = URL.createObjectURL(new Blob([(0, experiment_1.exportExperiment)(last)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = 'gc-experiment.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };\ninput.onchange = async () => { const file = input.files?.[0]; if (!file)\n    return; const current = ++token; worker?.terminate(); worker = undefined; run.disabled = true; cancel.disabled = false; save.disabled = true; last = undefined; el(\"zones\").textContent = \"\"; for (const k of [\"A\", \"B\", \"C\"])\n    document.getElementById(\"zone-\" + k)?.setAttribute(\"visibility\", \"hidden\"); time.disabled = true; table.replaceChildren(); metrics.textContent = ''; plot.getContext('2d')?.clearRect(0, 0, plot.width, plot.height); try {\n    if (file.size > 20_000_000)\n        throw Error('IMPORT.SIZE');\n    const request = (0, experiment_1.readReplayRequest)(await file.text());\n    if (current === token) {\n        setFields(request);\n        execute(request, true);\n    }\n}\ncatch (e) {\n    if (current === token) {\n        run.disabled = false;\n        cancel.disabled = true;\n        status.textContent = e instanceof Error ? e.message : 'IMPORT.READ';\n    }\n} input.value = ''; };\nstart();\n\n},\"apps/web/worker.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nconst experiment_1 = require(\"../../domains/gas-chromatography/experiment\");\nconst service = (0, experiment_1.createGCService)();\nself.onmessage = (event) => self.postMessage(service.run(event.data));\n\n},\"domains/gas-chromatography/contracts.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.LIMITS = exports.DEFAULT = exports.VERSION = void 0;\nexports.parseMethod = parseMethod;\nexports.VERSION = 'gc-mwp/0.0.1';\nexports.DEFAULT = Object.freeze({ lengthM: 30, diameterMm: .25, temperatureC: 100, inletKPa: 200, outletKPa: 101.325, split: 5, noisePA: .015, seed: 42 });\nexports.LIMITS = Object.freeze({ lengthM: [15, 60], diameterMm: [.18, .53], temperatureC: [60, 180], inletKPa: [120, 350], outletKPa: [95, 110], split: [0, 100], noisePA: [0, .1], seed: [0, 4294967295] });\nfunction parseMethod(input) {\n    if (!input || typeof input !== 'object' || Array.isArray(input))\n        throw Error('METHOD.INVALID');\n    const obj = input, out = {};\n    for (const key of Object.keys(exports.LIMITS)) {\n        const v = obj[key], [lo, hi] = exports.LIMITS[key];\n        if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)\n            throw Error('METHOD.RANGE.' + key);\n        out[key] = v;\n    }\n    if (!Number.isInteger(out.seed) || out.inletKPa <= out.outletKPa)\n        throw Error('METHOD.INVALID_PRESSURE_OR_SEED');\n    return out;\n}\n\n},\"domains/gas-chromatography/experiment.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.createGCService = void 0;\nexports.exportExperiment = exportExperiment;\nexports.readReplayRequest = readReplayRequest;\nconst index_1 = require(\"../../packages/application/index\");\nconst contracts_1 = require(\"./contracts\");\nconst model_1 = require(\"./model\");\nconst createGCService = () => new index_1.ExperimentService(contracts_1.parseMethod, { solve: model_1.simulate });\nexports.createGCService = createGCService;\nfunction exportExperiment(result) { return JSON.stringify({ format: 'gc-experiment/v1', version: contracts_1.VERSION, method: result.method, result }, null, 2); }\n/** Replay validates inputs and re-executes. Imported output is not trusted. */\nfunction readReplayRequest(text) { if (text.length > 20_000_000)\n    throw Error('IMPORT.SIZE'); const x = JSON.parse(text); if (x?.format !== 'gc-experiment/v1' || x.version !== contracts_1.VERSION)\n    throw Error('IMPORT.VERSION'); return (0, contracts_1.parseMethod)(x.method); }\n\n},\"domains/gas-chromatography/model.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.PROFILE = void 0;\nexports.flow = flow;\nexports.simulate = simulate;\nexports.visualizationSnapshot = visualizationSnapshot;\nconst contracts_1 = require(\"./contracts\");\nconst index_1 = require(\"../../packages/scientific-core/index\");\n// Synthetic illustrative coefficients, not measured compound/column data.\nconst R = 8.314462618, TREF = 373.15;\nexports.PROFILE = Object.freeze({ id: 'GC.ISOTHERMAL.SYNTHETIC.v1', origin: 'synthetic', viscosityRefPaS: 1.96e-5, viscosityExponent: .7, viscosityRefK: 293.15, Bm2s: 1.2e-5, Cs: 8e-4, baselinePA: .02, analytes: Object.freeze([{ name: 'A', kRef: .55, enthalpyJ: -18000, massUg: .8, response: 8 }, { name: 'B', kRef: 1.6, enthalpyJ: -22000, massUg: 1, response: 10 }, { name: 'C', kRef: 3.2, enthalpyJ: -26000, massUg: .7, response: 9 }].map(a => Object.freeze(a))) });\nfunction flow(m) {\n    const T = m.temperatureC + 273.15, eta = exports.PROFILE.viscosityRefPaS * (T / exports.PROFILE.viscosityRefK) ** exports.PROFILE.viscosityExponent;\n    const f = (0, index_1.capillary)({ lengthM: m.lengthM, radiusM: m.diameterMm / 2000, temperatureK: T, inletPa: m.inletKPa * 1000, outletPa: m.outletKPa * 1000, viscosityPaS: eta });\n    return { flowMlMin: f.outletM3S * 6e7, deadTimeS: f.deadTimeS, velocityCmS: f.meanVelocityMS * 100 };\n}\nfunction simulate(m) {\n    const f = flow(m), u = f.velocityCmS / 100, T = m.temperatureC + 273.15;\n    const H = exports.PROFILE.Bm2s / u + exports.PROFILE.Cs * u, N = m.lengthM / H;\n    const peaks = exports.PROFILE.analytes.map(a => { const k = a.kRef * Math.exp(-a.enthalpyJ / R * (1 / T - 1 / TREF)); const retentionS = f.deadTimeS * (1 + k); const sigmaS = retentionS / Math.sqrt(N); const massUg = a.massUg / (1 + m.split); return Object.freeze({ name: a.name, retentionS, sigmaS, k, plates: N, massUg, areaPAS: a.response * massUg }); });\n    // Adaptive sample spacing resolves narrow peaks; hard cap protects weak devices.\n    const intervalS = Math.min(.2, Math.min(...peaks.map(p => p.sigmaS)) / 8);\n    const end = Math.max(...peaks.map(p => p.retentionS + 7 * p.sigmaS));\n    const count = Math.ceil(end / intervalS) + 1;\n    if (!Number.isFinite(count) || count > 200000)\n        throw Error('SOLVER.RESOURCE_LIMIT');\n    const rng = (0, index_1.uniform)(m.seed), signal = [];\n    for (let i = 0; i < count; i++) {\n        const t = i * intervalS;\n        let y = exports.PROFILE.baselinePA;\n        for (const p of peaks)\n            y += (0, index_1.gaussian)(t, p.retentionS, p.sigmaS, p.areaPAS);\n        signal.push(y + m.noisePA * (2 * rng() - 1));\n    }\n    return Object.freeze({ version: contracts_1.VERSION, profileId: exports.PROFILE.id, origin: 'synthetic', method: Object.freeze({ ...m }), ...f, peaks: Object.freeze(peaks), intervalS, signal: Object.freeze(signal), events: Object.freeze(['METHOD_VALIDATED', 'ACQUISITION_STARTED', 'ACQUISITION_COMPLETED']) });\n}\n/** Center of an equilibrium zone, not its spatial width. Invert integrated p(z). */\nfunction visualizationSnapshot(r, timeS) {\n    const t = Math.max(0, Math.min(timeS, (r.signal.length - 1) * r.intervalS));\n    const p = r.method.inletKPa, q = r.method.outletKPa;\n    return { timeS: t, zones: r.peaks.map(a => { const f = Math.min(1, t / a.retentionS); const localP = Math.cbrt(p ** 3 - f * (p ** 3 - q ** 3)); return { name: a.name, fraction: Math.max(0, Math.min(1, (p * p - localP * localP) / (p * p - q * q))), exited: t >= a.retentionS }; }) };\n}\n\n},\"packages/application/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.ExperimentService = void 0;\n/** Validated use case; concrete solver injected at composition root. */\nclass ExperimentService {\n    parse;\n    solver;\n    constructor(parse, solver) {\n        this.parse = parse;\n        this.solver = solver;\n    }\n    run(input) { try {\n        return { ok: true, data: this.solver.solve(this.parse(input)) };\n    }\n    catch (e) {\n        return { ok: false, error: e instanceof Error ? e.message : 'SOLVER.UNKNOWN' };\n    } }\n}\nexports.ExperimentService = ExperimentService;\n\n},\"packages/contracts/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\n\n},\"packages/scientific-core/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.capillary = capillary;\nexports.uniform = uniform;\nexports.gaussian = gaussian;\nfunction capillary(c) {\n    const { lengthM: L, radiusM: r, temperatureK: T, inletPa: p, outletPa: q, viscosityPaS: eta } = c;\n    if (![L, r, T, p, q, eta].every(x => Number.isFinite(x) && x > 0) || p <= q)\n        throw Error('PHYSICS.CAPILLARY_RANGE');\n    const R = 8.314462618, n = Math.PI * r ** 4 * (p * p - q * q) / (16 * eta * L * R * T);\n    const Q = n * R * T / q, uOut = Q / (Math.PI * r * r);\n    const avgPressure = 2 * (p * p + p * q + q * q) / (3 * (p + q));\n    const deadTimeS = L * avgPressure / (uOut * q);\n    return { outletM3S: Q, deadTimeS, meanVelocityMS: L / deadTimeS };\n}\nfunction uniform(seed) { let state = seed >>> 0; return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; }; }\nfunction gaussian(t, center, sigma, area) { return area / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-.5 * ((t - center) / sigma) ** 2); }\n\n}};const cache={};function load(id){if(cache[id])return cache[id].exports;if(!modules[id])throw Error('Unknown module '+id);const m=cache[id]={exports:{}};modules[id](function(rel){const p=id.split('/');p.pop();for(const s of rel.split('/')){if(s==='..')p.pop();else if(s!=='.')p.push(s);}return load(p.join('/')+(rel.endsWith('.js')?'':'.js'));},m,m.exports);return m.exports;}load(\"apps/web/worker.js\");})();";
+(function(){const modules={"apps/web/main.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const contracts_1 = require("../../domains/gas-chromatography/contracts");
+const experiment_1 = require("../../domains/gas-chromatography/experiment");
+const model_1 = require("../../domains/gas-chromatography/model");
+function el(id) { const node = document.getElementById(id); if (!node)
+    throw Error('Missing ' + id); return node; }
+const form = el('method'), status = el('status'), table = el('peaks'), metrics = el('metrics'), plot = el('plot'), run = el('run'), save = el('save'), input = el('import'), time = el('time');
+const cancel = el('cancel');
+const service = (0, experiment_1.createGCService)();
+let last, worker, token = 0;
+const labels = { lengthM: 'Длина колонки, м', diameterMm: 'Диаметр, мм', temperatureC: 'Температура, °C', inletKPa: 'Вход, кПа абс.', outletKPa: 'Выход, кПа абс.', split: 'Split', noisePA: 'Шум, пА', seed: 'Seed' };
+for (const key of Object.keys(contracts_1.DEFAULT)) {
+    const l = document.createElement('label'), field = document.createElement('input');
+    l.textContent = labels[key];
+    field.name = key;
+    field.type = 'number';
+    field.step = key === 'seed' ? '1' : 'any';
+    field.min = String(contracts_1.LIMITS[key][0]);
+    field.max = String(contracts_1.LIMITS[key][1]);
+    field.value = String(contracts_1.DEFAULT[key]);
+    field.required = true;
+    l.append(field);
+    form.append(l);
+}
+function values() { return Object.fromEntries(Array.from(new FormData(form).entries()).map(([k, v]) => [k, String(v).trim() === '' ? NaN : Number(v)])); }
+function setFields(m) { for (const [k, v] of Object.entries(m)) {
+    const f = form.elements.namedItem(k);
+    if (f instanceof HTMLInputElement)
+        f.value = String(v);
+} }
+function draw() { if (!last)
+    return; const r = last, c = plot.getContext('2d'); if (!c)
+    return; const w = plot.width, h = plot.height, left = 54, right = w - 20, top = 22, bottom = h - 38; const max = Math.max(.1, r.signal.reduce((a, b) => Math.max(a, b), 0)), min = r.signal.reduce((a, b) => Math.min(a, b), 0), end = (r.signal.length - 1) * r.intervalS, t = Number(time.value); c.clearRect(0, 0, w, h); c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.font = '12px system-ui'; c.fillStyle = '#536579'; c.strokeStyle = '#dbe4ec'; for (let i = 0; i <= 5; i++) {
+    const y = bottom - (bottom - top) * i / 5, x = left + (right - left) * i / 5;
+    c.beginPath();
+    c.moveTo(left, y);
+    c.lineTo(right, y);
+    c.stroke();
+    c.fillText((min + (max - min) * i / 5).toFixed(2), 4, y + 4);
+    c.fillText((end * i / 5 / 60).toFixed(1), x - 8, h - 12);
+} c.fillText('пА', 5, 13); c.fillText('мин', right - 20, h - 2); c.strokeStyle = '#126d70'; c.lineWidth = 1.6; c.beginPath(); const n = Math.min(r.signal.length - 1, Math.floor(t / r.intervalS)); for (let i = 0; i <= n; i++) {
+    const x = left + (right - left) * i / (r.signal.length - 1), y = bottom - (bottom - top) * (r.signal[i] - min) / (max - min);
+    if (i === 0)
+        c.moveTo(x, y);
+    else
+        c.lineTo(x, y);
+} c.stroke(); for (const p of r.peaks) {
+    if (p.retentionS <= t) {
+        const x = left + (right - left) * p.retentionS / end;
+        c.fillStyle = '#263a4d';
+        c.fillText(p.name, x - 4, top + 14);
+    }
+} el('clock').textContent = (t / 60).toFixed(2) + ' / ' + (end / 60).toFixed(2) + ' мин'; const snapshot = (0, model_1.visualizationSnapshot)(r, t); for (const z of snapshot.zones) {
+    const marker = document.getElementById('zone-' + z.name);
+    marker?.setAttribute('transform', 'translate(' + (25 + 600 * z.fraction) + ' 0)');
+    marker?.setAttribute('visibility', z.exited ? 'hidden' : 'visible');
+} el('zones').textContent = snapshot.zones.map(z => z.name + ': ' + (z.exited ? 'центр вышел' : (z.fraction * r.method.lengthM).toFixed(2) + ' м')).join(' · '); }
+function present(reply, mode) { run.disabled = false; cancel.disabled = true; if (!reply.ok) {
+    status.textContent = reply.error;
+    return;
+} last = reply.data; const r = last; setFields(r.method); status.textContent = 'Готово · ' + mode + ' · синтетические параметры'; save.disabled = false; metrics.textContent = `Расход ${r.flowMlMin.toFixed(3)} мл/мин · tM ${(r.deadTimeS / 60).toFixed(3)} мин · скорость ${r.velocityCmS.toFixed(2)} см/с`; table.replaceChildren(); for (const p of r.peaks) {
+    const tr = document.createElement('tr');
+    for (const v of [p.name, (p.retentionS / 60).toFixed(3), p.k.toFixed(3), p.plates.toFixed(0), p.areaPAS.toFixed(4)]) {
+        const td = document.createElement('td');
+        td.textContent = v;
+        tr.append(td);
+    }
+    table.append(tr);
+} time.max = String((r.signal.length - 1) * r.intervalS); time.value = time.max; time.disabled = false; draw(); }
+function execute(request, replay = false) { const current = ++token; worker?.terminate(); run.disabled = true; cancel.disabled = false; save.disabled = true; last = undefined; el("zones").textContent = ""; for (const k of ["A", "B", "C"])
+    document.getElementById("zone-" + k)?.setAttribute("visibility", "hidden"); time.disabled = true; table.replaceChildren(); metrics.textContent = ""; plot.getContext("2d")?.clearRect(0, 0, plot.width, plot.height); status.textContent = 'Расчёт…'; try {
+    const url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
+    worker = new Worker(url);
+    URL.revokeObjectURL(url);
+    worker.onmessage = (e) => { if (token === current) {
+        worker?.terminate();
+        worker = undefined;
+        present(e.data, replay ? 'повтор из параметров · Web Worker' : 'Web Worker');
+    } };
+    worker.onerror = () => { if (token === current) {
+        worker?.terminate();
+        worker = undefined;
+        present(service.run(request), replay ? 'повтор из параметров · локальный fallback' : 'локальный fallback');
+    } };
+    worker.postMessage(request);
+}
+catch {
+    present(service.run(request), replay ? 'повтор из параметров · локальный fallback' : 'локальный fallback');
+} }
+form.oninput = () => { if (last)
+    status.textContent = 'Параметры изменены · показан предыдущий расчёт'; };
+function start() { if (form.reportValidity())
+    execute(values()); }
+run.onclick = start;
+cancel.onclick = () => { if (cancel.disabled)
+    return; token++; worker?.terminate(); worker = undefined; run.disabled = false; cancel.disabled = true; status.textContent = 'Расчёт отменён'; };
+el('load').onclick = () => input.click();
+time.oninput = draw;
+save.onclick = () => { if (!last)
+    return; const url = URL.createObjectURL(new Blob([(0, experiment_1.exportExperiment)(last)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = 'gc-experiment.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+input.onchange = async () => { const file = input.files?.[0]; if (!file)
+    return; const current = ++token; worker?.terminate(); worker = undefined; run.disabled = true; cancel.disabled = false; save.disabled = true; last = undefined; el("zones").textContent = ""; for (const k of ["A", "B", "C"])
+    document.getElementById("zone-" + k)?.setAttribute("visibility", "hidden"); time.disabled = true; table.replaceChildren(); metrics.textContent = ''; plot.getContext('2d')?.clearRect(0, 0, plot.width, plot.height); try {
+    if (file.size > 20_000_000)
+        throw Error('IMPORT.SIZE');
+    const request = (0, experiment_1.readReplayRequest)(await file.text());
+    if (current === token) {
+        setFields(request);
+        execute(request, true);
+    }
+}
+catch (e) {
+    if (current === token) {
+        run.disabled = false;
+        cancel.disabled = true;
+        status.textContent = e instanceof Error ? e.message : 'IMPORT.READ';
+    }
+} input.value = ''; };
+start();
+
+},"apps/web/worker.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const experiment_1 = require("../../domains/gas-chromatography/experiment");
+const service = (0, experiment_1.createGCService)();
+self.onmessage = (event) => self.postMessage(service.run(event.data));
+
+},"domains/gas-chromatography/contracts.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LIMITS = exports.DEFAULT = exports.VERSION = void 0;
+exports.parseMethod = parseMethod;
+exports.VERSION = 'gc-mwp/0.0.1';
+exports.DEFAULT = Object.freeze({ lengthM: 30, diameterMm: .25, temperatureC: 100, inletKPa: 200, outletKPa: 101.325, split: 5, noisePA: .015, seed: 42 });
+exports.LIMITS = Object.freeze({ lengthM: [15, 60], diameterMm: [.18, .53], temperatureC: [60, 180], inletKPa: [120, 350], outletKPa: [95, 110], split: [0, 100], noisePA: [0, .1], seed: [0, 4294967295] });
+function parseMethod(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input))
+        throw Error('METHOD.INVALID');
+    const obj = input, out = {};
+    for (const key of Object.keys(exports.LIMITS)) {
+        const v = obj[key], [lo, hi] = exports.LIMITS[key];
+        if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)
+            throw Error('METHOD.RANGE.' + key);
+        out[key] = v;
+    }
+    if (!Number.isInteger(out.seed) || out.inletKPa <= out.outletKPa)
+        throw Error('METHOD.INVALID_PRESSURE_OR_SEED');
+    return out;
+}
+
+},"domains/gas-chromatography/experiment.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createGCService = void 0;
+exports.exportExperiment = exportExperiment;
+exports.readReplayRequest = readReplayRequest;
+const index_1 = require("../../packages/application/index");
+const contracts_1 = require("./contracts");
+const model_1 = require("./model");
+const createGCService = () => new index_1.ExperimentService(contracts_1.parseMethod, { solve: model_1.simulate });
+exports.createGCService = createGCService;
+function exportExperiment(result) { return JSON.stringify({ format: 'gc-experiment/v1', version: contracts_1.VERSION, method: result.method, result }, null, 2); }
+/** Replay validates inputs and re-executes. Imported output is not trusted. */
+function readReplayRequest(text) { if (text.length > 20_000_000)
+    throw Error('IMPORT.SIZE'); const x = JSON.parse(text); if (x?.format !== 'gc-experiment/v1' || x.version !== contracts_1.VERSION)
+    throw Error('IMPORT.VERSION'); return (0, contracts_1.parseMethod)(x.method); }
+
+},"domains/gas-chromatography/model.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PROFILE = void 0;
+exports.flow = flow;
+exports.simulate = simulate;
+exports.visualizationSnapshot = visualizationSnapshot;
+const contracts_1 = require("./contracts");
+const index_1 = require("../../packages/scientific-core/index");
+// Synthetic illustrative coefficients, not measured compound/column data.
+const R = 8.314462618, TREF = 373.15;
+exports.PROFILE = Object.freeze({ id: 'GC.ISOTHERMAL.SYNTHETIC.v1', origin: 'synthetic', viscosityRefPaS: 1.96e-5, viscosityExponent: .7, viscosityRefK: 293.15, Bm2s: 1.2e-5, Cs: 8e-4, baselinePA: .02, analytes: Object.freeze([{ name: 'A', kRef: .55, enthalpyJ: -18000, massUg: .8, response: 8 }, { name: 'B', kRef: 1.6, enthalpyJ: -22000, massUg: 1, response: 10 }, { name: 'C', kRef: 3.2, enthalpyJ: -26000, massUg: .7, response: 9 }].map(a => Object.freeze(a))) });
+function flow(m) {
+    const T = m.temperatureC + 273.15, eta = exports.PROFILE.viscosityRefPaS * (T / exports.PROFILE.viscosityRefK) ** exports.PROFILE.viscosityExponent;
+    const f = (0, index_1.capillary)({ lengthM: m.lengthM, radiusM: m.diameterMm / 2000, temperatureK: T, inletPa: m.inletKPa * 1000, outletPa: m.outletKPa * 1000, viscosityPaS: eta });
+    return { flowMlMin: f.outletM3S * 6e7, deadTimeS: f.deadTimeS, velocityCmS: f.meanVelocityMS * 100 };
+}
+function simulate(m) {
+    const f = flow(m), u = f.velocityCmS / 100, T = m.temperatureC + 273.15;
+    const H = exports.PROFILE.Bm2s / u + exports.PROFILE.Cs * u, N = m.lengthM / H;
+    const peaks = exports.PROFILE.analytes.map(a => { const k = a.kRef * Math.exp(-a.enthalpyJ / R * (1 / T - 1 / TREF)); const retentionS = f.deadTimeS * (1 + k); const sigmaS = retentionS / Math.sqrt(N); const massUg = a.massUg / (1 + m.split); return Object.freeze({ name: a.name, retentionS, sigmaS, k, plates: N, massUg, areaPAS: a.response * massUg }); });
+    // Adaptive sample spacing resolves narrow peaks; hard cap protects weak devices.
+    const intervalS = Math.min(.2, Math.min(...peaks.map(p => p.sigmaS)) / 8);
+    const end = Math.max(...peaks.map(p => p.retentionS + 7 * p.sigmaS));
+    const count = Math.ceil(end / intervalS) + 1;
+    if (!Number.isFinite(count) || count > 200000)
+        throw Error('SOLVER.RESOURCE_LIMIT');
+    const rng = (0, index_1.uniform)(m.seed), signal = [];
+    for (let i = 0; i < count; i++) {
+        const t = i * intervalS;
+        let y = exports.PROFILE.baselinePA;
+        for (const p of peaks)
+            y += (0, index_1.gaussian)(t, p.retentionS, p.sigmaS, p.areaPAS);
+        signal.push(y + m.noisePA * (2 * rng() - 1));
+    }
+    return Object.freeze({ version: contracts_1.VERSION, profileId: exports.PROFILE.id, origin: 'synthetic', method: Object.freeze({ ...m }), ...f, peaks: Object.freeze(peaks), intervalS, signal: Object.freeze(signal), events: Object.freeze(['METHOD_VALIDATED', 'ACQUISITION_STARTED', 'ACQUISITION_COMPLETED']) });
+}
+/** Center of an equilibrium zone, not its spatial width. Invert integrated p(z). */
+function visualizationSnapshot(r, timeS) {
+    const t = Math.max(0, Math.min(timeS, (r.signal.length - 1) * r.intervalS));
+    const p = r.method.inletKPa, q = r.method.outletKPa;
+    return { timeS: t, zones: r.peaks.map(a => { const f = Math.min(1, t / a.retentionS); const localP = Math.cbrt(p ** 3 - f * (p ** 3 - q ** 3)); return { name: a.name, fraction: Math.max(0, Math.min(1, (p * p - localP * localP) / (p * p - q * q))), exited: t >= a.retentionS }; }) };
+}
+
+},"packages/application/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ExperimentService = void 0;
+/** Validated use case; concrete solver injected at composition root. */
+class ExperimentService {
+    parse;
+    solver;
+    constructor(parse, solver) {
+        this.parse = parse;
+        this.solver = solver;
+    }
+    run(input) { try {
+        return { ok: true, data: this.solver.solve(this.parse(input)) };
+    }
+    catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'SOLVER.UNKNOWN' };
+    } }
+}
+exports.ExperimentService = ExperimentService;
+
+},"packages/contracts/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},"packages/scientific-core/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.capillary = capillary;
+exports.uniform = uniform;
+exports.gaussian = gaussian;
+function capillary(c) {
+    const { lengthM: L, radiusM: r, temperatureK: T, inletPa: p, outletPa: q, viscosityPaS: eta } = c;
+    if (![L, r, T, p, q, eta].every(x => Number.isFinite(x) && x > 0) || p <= q)
+        throw Error('PHYSICS.CAPILLARY_RANGE');
+    const R = 8.314462618, n = Math.PI * r ** 4 * (p * p - q * q) / (16 * eta * L * R * T);
+    const Q = n * R * T / q, uOut = Q / (Math.PI * r * r);
+    const avgPressure = 2 * (p * p + p * q + q * q) / (3 * (p + q));
+    const deadTimeS = L * avgPressure / (uOut * q);
+    return { outletM3S: Q, deadTimeS, meanVelocityMS: L / deadTimeS };
+}
+function uniform(seed) { let state = seed >>> 0; return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; }; }
+function gaussian(t, center, sigma, area) { return area / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-.5 * ((t - center) / sigma) ** 2); }
+
+}};const cache={};function load(id){if(cache[id])return cache[id].exports;if(!modules[id])throw Error('Unknown module '+id);const m=cache[id]={exports:{}};modules[id](function(rel){const p=id.split('/');p.pop();for(const s of rel.split('/')){if(s==='..')p.pop();else if(s!=='.')p.push(s);}return load(p.join('/')+(rel.endsWith('.js')?'':'.js'));},m,m.exports);return m.exports;}load("apps/web/main.js");})();</script></body></html>

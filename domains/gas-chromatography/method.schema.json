@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GC Isothermal Method v1",
+  "type": "object",
+  "required": ["lengthM", "diameterMm", "temperatureC", "inletKPa", "outletKPa", "split", "noisePA", "seed"],
+  "properties": {
+    "lengthM": {"type":"number","minimum":15,"maximum":60},
+    "diameterMm": {"type":"number","minimum":0.18,"maximum":0.53},
+    "temperatureC": {"type":"number","minimum":60,"maximum":180},
+    "inletKPa": {"type":"number","minimum":120,"maximum":350},
+    "outletKPa": {"type":"number","minimum":95,"maximum":110},
+    "split": {"type":"number","minimum":0,"maximum":100},
+    "noisePA": {"type":"number","minimum":0,"maximum":0.1},
+    "seed": {"type":"integer","minimum":0,"maximum":4294967295}
+  },
+  "additionalProperties": true,
+  "description": "Absolute pressures; application additionally checks inlet > outlet and finite numeric inputs. Extra fields are ignored."
+}
