@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: catalog is valid; every published entry exists
+ok 1 - catalog is valid; every published entry exists
+  ---
+  duration_ms: 1.694533
+  type: 'test'
+  ...
+# Subtest: search Cyrillic, synonyms, filters, empty result
+ok 2 - search Cyrillic, synonyms, filters, empty result
+  ---
+  duration_ms: 1.598394
+  type: 'test'
+  ...
+# Subtest: reject external paths, traversal, duplicates, planned with path
+ok 3 - reject external paths, traversal, duplicates, planned with path
+  ---
+  duration_ms: 0.512632
+  type: 'test'
+  ...
+# Subtest: deep links only launch available local modules
+ok 4 - deep links only launch available local modules
+  ---
+  duration_ms: 0.26075
+  type: 'test'
+  ...
+# Subtest: host disposes one module before switching; idempotent close
+ok 5 - host disposes one module before switching; idempotent close
+  ---
+  duration_ms: 0.28375
+  type: 'test'
+  ...
+# Subtest: generated HTML is reproducible
+ok 6 - generated HTML is reproducible
+  ---
+  duration_ms: 36.329192
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 112.394373
