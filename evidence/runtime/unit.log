@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: catalog is valid; every published entry exists
+ok 1 - catalog is valid; every published entry exists
+  ---
+  duration_ms: 2.198378
+  type: 'test'
+  ...
+# Subtest: search Cyrillic, synonyms, filters, empty result
+ok 2 - search Cyrillic, synonyms, filters, empty result
+  ---
+  duration_ms: 1.434468
+  type: 'test'
+  ...
+# Subtest: reject external paths, traversal, duplicates, planned with path
+ok 3 - reject external paths, traversal, duplicates, planned with path
+  ---
+  duration_ms: 1.920695
+  type: 'test'
+  ...
+# Subtest: deep links only launch available local modules
+ok 4 - deep links only launch available local modules
+  ---
+  duration_ms: 0.339532
+  type: 'test'
+  ...
+# Subtest: host disposes one module before switching; idempotent close
+ok 5 - host disposes one module before switching; idempotent close
+  ---
+  duration_ms: 0.395146
+  type: 'test'
+  ...
+# Subtest: generated HTML is reproducible
+ok 6 - generated HTML is reproducible
+  ---
+  duration_ms: 49.659634
+  type: 'test'
+  ...
+# Subtest: registry serves two distinct scientific models
+ok 7 - registry serves two distinct scientific models
+  ---
+  duration_ms: 20.925621
+  type: 'test'
+  ...
+# Subtest: Beer Lambert and zero concentration limits
+ok 8 - Beer Lambert and zero concentration limits
+  ---
+  duration_ms: 26.001881
+  type: 'test'
+  ...
+# Subtest: source drift cancels in double beam but not single
+ok 9 - source drift cancels in double beam but not single
+  ---
+  duration_ms: 12.289189
+  type: 'test'
+  ...
+# Subtest: stray light raises transmission, lowers apparent absorbance
+ok 10 - stray light raises transmission, lowers apparent absorbance
+  ---
+  duration_ms: 0.259459
+  type: 'test'
+  ...
+# Subtest: signal invalidation and deterministic replay ignore imported results
+ok 11 - signal invalidation and deterministic replay ignore imported results
+  ---
+  duration_ms: 25.832401
+  type: 'test'
+  ...
+# Subtest: input and duplicate registry validation
+ok 12 - input and duplicate registry validation
+  ---
+  duration_ms: 0.705819
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 159.383437

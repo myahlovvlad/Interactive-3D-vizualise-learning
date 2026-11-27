@@ -1,0 +1,146 @@
+
+> interactive-stem-laboratory@0.0.1 test
+> npm run build && node tools/build-uvvis.cjs --check && node --test tests/*.test.cjs
+
+
+> interactive-stem-laboratory@0.0.1 build
+> node tools/build.cjs
+
+Built dist/index.html 39091 bytes
+PASS: generated UV/Vis HTML matches sources
+TAP version 13
+# Subtest: isothermal retention and positive mass
+ok 1 - isothermal retention and positive mass
+  ---
+  duration_ms: 10.503506
+  type: 'test'
+  ...
+# Subtest: zero noise integrated FID mass response
+ok 2 - zero noise integrated FID mass response
+  ---
+  duration_ms: 6.513665
+  type: 'test'
+  ...
+# Subtest: split mass response and temperature trends
+ok 3 - split mass response and temperature trends
+  ---
+  duration_ms: 9.894699
+  type: 'test'
+  ...
+# Subtest: seed replay and invalid inputs
+ok 4 - seed replay and invalid inputs
+  ---
+  duration_ms: 33.335691
+  type: 'test'
+  ...
+# Subtest: independent default numeric oracle
+ok 5 - independent default numeric oracle
+  ---
+  duration_ms: 6.101876
+  type: 'test'
+  ...
+# Subtest: method schema and runtime bounds agree
+ok 6 - method schema and runtime bounds agree
+  ---
+  duration_ms: 3.384799
+  type: 'test'
+  ...
+# Subtest: application can use a separate solver adapter
+ok 7 - application can use a separate solver adapter
+  ---
+  duration_ms: 0.631829
+  type: 'test'
+  ...
+# Subtest: resource bounds and immutable core results
+ok 8 - resource bounds and immutable core results
+  ---
+  duration_ms: 14.111926
+  type: 'test'
+  ...
+# Subtest: visualization is tied to analytical residence time
+ok 9 - visualization is tied to analytical residence time
+  ---
+  duration_ms: 2.854747
+  type: 'test'
+  ...
+# Subtest: catalog is valid; every published entry exists
+ok 10 - catalog is valid; every published entry exists
+  ---
+  duration_ms: 1.620854
+  type: 'test'
+  ...
+# Subtest: search Cyrillic, synonyms, filters, empty result
+ok 11 - search Cyrillic, synonyms, filters, empty result
+  ---
+  duration_ms: 1.10117
+  type: 'test'
+  ...
+# Subtest: reject external paths, traversal, duplicates, planned with path
+ok 12 - reject external paths, traversal, duplicates, planned with path
+  ---
+  duration_ms: 1.982948
+  type: 'test'
+  ...
+# Subtest: deep links only launch available local modules
+ok 13 - deep links only launch available local modules
+  ---
+  duration_ms: 0.328105
+  type: 'test'
+  ...
+# Subtest: host disposes one module before switching; idempotent close
+ok 14 - host disposes one module before switching; idempotent close
+  ---
+  duration_ms: 0.579
+  type: 'test'
+  ...
+# Subtest: generated HTML is reproducible
+ok 15 - generated HTML is reproducible
+  ---
+  duration_ms: 79.924696
+  type: 'test'
+  ...
+# Subtest: registry serves two distinct scientific models
+ok 16 - registry serves two distinct scientific models
+  ---
+  duration_ms: 36.383469
+  type: 'test'
+  ...
+# Subtest: Beer Lambert and zero concentration limits
+ok 17 - Beer Lambert and zero concentration limits
+  ---
+  duration_ms: 32.642797
+  type: 'test'
+  ...
+# Subtest: source drift cancels in double beam but not single
+ok 18 - source drift cancels in double beam but not single
+  ---
+  duration_ms: 13.311132
+  type: 'test'
+  ...
+# Subtest: stray light raises transmission, lowers apparent absorbance
+ok 19 - stray light raises transmission, lowers apparent absorbance
+  ---
+  duration_ms: 0.438538
+  type: 'test'
+  ...
+# Subtest: signal invalidation and deterministic replay ignore imported results
+ok 20 - signal invalidation and deterministic replay ignore imported results
+  ---
+  duration_ms: 28.984287
+  type: 'test'
+  ...
+# Subtest: input and duplicate registry validation
+ok 21 - input and duplicate registry validation
+  ---
+  duration_ms: 0.743792
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 244.602962

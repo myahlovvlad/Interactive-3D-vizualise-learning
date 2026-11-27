@@ -1,1 +1,1 @@
-{"name":"interactive-stem-laboratory","version":"0.0.1","private":true,"type":"commonjs","engines":{"node":">=22"},"scripts":{"build":"node tools/build.cjs","test":"npm run build && node --test tests/*.test.cjs"}}
+{"name":"interactive-stem-laboratory","version":"0.0.1","private":true,"type":"commonjs","engines":{"node":">=22"},"scripts":{"build":"node tools/build.cjs","test":"npm run build && node tools/build-uvvis.cjs --check && node --test tests/*.test.cjs","build:uvvis":"node tools/build-uvvis.cjs","build:platform":"npm run build:uvvis && node tools/build-platform.cjs"}}

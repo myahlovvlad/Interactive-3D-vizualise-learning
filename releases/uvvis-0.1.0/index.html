@@ -1,0 +1,349 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>УФ/Вид-спектрофотометр — виртуальная лаборатория</title><style>
+:root{color-scheme:light;--ink:#223845;--muted:#5e7380;--accent:#126c66;--line:#d3dfe0;--paper:#f4f7f6}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,sans-serif}main{max-width:1400px;margin:auto;padding:22px}header{margin-bottom:20px}small{color:var(--muted);font-weight:650;letter-spacing:.07em}h1{font-size:clamp(26px,4vw,38px);line-height:1.15;margin:8px 0}h2{font-size:18px;margin:0 0 12px}p{margin:5px 0 12px;color:var(--muted)}.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(285px,1fr);gap:16px}.panel{background:white;border:1px solid var(--line);border-radius:13px;padding:16px;min-width:0}.scene{background:#f7f4ec;border-radius:10px;width:100%;height:auto;display:block;touch-action:none}button,select,input{font:inherit}button,select{border:1px solid #b9ccce;background:white;color:var(--ink);border-radius:7px;padding:8px 10px}button{cursor:pointer}button.primary{background:var(--accent);color:white;border-color:var(--accent)}button:disabled{opacity:.55;cursor:default}.tools{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.fields{display:grid;gap:8px}.fields label{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,42%);align-items:center;gap:8px}.fields input,.fields select{width:100%;min-width:0;border:1px solid #b9ccce;border-radius:6px;padding:7px;background:white}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.metric{padding:10px;background:#edf4f1;border-radius:8px}.metric b{display:block;font-size:clamp(18px,2.7vw,26px);font-variant-numeric:tabular-nums}.metric span{font-size:12px;color:var(--muted)}#plot{width:100%;height:auto;display:block}.hint{font-size:12px;color:var(--muted)}#detail{min-height:56px;background:#f1f5f3;padding:10px;border-radius:8px}#status{min-height:24px;font-size:13px;color:var(--accent)}.warning{border-left:3px solid #b18a4c;padding-left:10px}.wide{margin-top:16px}input[type=range]{width:100%} @media(max-width:850px){.layout{grid-template-columns:1fr}main{padding:12px}}@media(max-width:420px){.metrics{grid-template-columns:1fr}.fields label{grid-template-columns:minmax(0,1fr) minmax(100px,45%)}}
+</style></head><body><main><header><small>НАУЧНО-ОБРАЗОВАТЕЛЬНАЯ ПЛАТФОРМА / МОДУЛЬ 0.1.0</small><h1>УФ/Вид-спектрофотометр</h1><p>Изучение оптического тракта, фотометрии и влияния параметров измерения. Синтетический образец, не реальный спектр вещества.</p></header><div class="layout"><section class="panel"><h2>Интерактивная пространственная схема</h2><svg id="scene" class="scene" viewBox="0 0 760 430" role="img" aria-label="Пространственная схема спектрофотометра"></svg><div class="tools"><button id="rotateLeft" aria-label="Повернуть влево">← Поворот</button><button id="rotateRight">Поворот →</button><button id="shell">Закрыть корпус</button><button id="front">Исходный вид</button></div><label>Азимут <input id="yaw" type="range" min="0" max="360" value="35"></label><div id="detail" aria-live="polite">Выберите узел на схеме или в списке. Оптика условная, не трассировка лучей.</div><label>Узел <select id="component"><option value="source">Источник света</option><option value="mono">Монохроматор</option><option value="split">Делитель луча</option><option value="sample">Кювета образца</option><option value="reference">Кювета сравнения</option><option value="detector">Фотодетектор</option></select></label><div class="metrics"><div class="metric"><span>Поглощение, A</span><b id="abs">—</b></div><div class="metric"><span>Пропускание, %</span><b id="trans">—</b></div><div class="metric"><span>Идеальное A</span><b id="ideal">—</b></div></div><p id="counts" class="hint"></p></section><section class="panel"><h2>Параметры метода</h2><div class="fields" id="fields"></div><div class="tools"><button class="primary" id="run">Измерить</button><button id="blank">Холостой раствор</button><button id="reset">Сброс</button></div><div id="status" role="status"></div><div class="tools"><button id="export" disabled>Экспорт JSON</button><button id="import">Повтор из JSON</button><input id="file" type="file" accept=".json" hidden></div><p class="hint warning">Однолучевой режим использует рассчитанный отсчёт холостого опыта до дрейфа; двухлучевой — одновременный канал сравнения. Полоса пропускания и рассеянный свет моделируются приближённо.</p></section></div><section class="panel wide"><h2>Спектр поглощения</h2><svg id="plot" viewBox="0 0 900 260" role="img" aria-label="Расчётный спектр поглощения"></svg><p class="hint">Сплошная линия — рассчитанное измерение; пунктир — идеальный закон поглощения. Пробелы означают недопустимый сигнал. A = εcl, T = 10⁻ᴬ. Полоса и рассеянный свет изменяют измеренное отношение интенсивностей.</p></section></main><script>const WORKER_SOURCE="(function(){const modules={\"apps/uvvis/composition.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.createRuntime = createRuntime;\nconst index_1 = require(\"../../packages/experiment-runtime/index\");\nconst experiment_1 = require(\"../../domains/gas-chromatography/experiment\");\nconst contracts_1 = require(\"../../domains/gas-chromatography/contracts\");\nconst model_1 = require(\"../../domains/uvvis/model\");\nfunction createRuntime() { const runtime = new index_1.ExperimentRuntime(); runtime.register({ id: 'gc-isothermal', version: contracts_1.VERSION, origin: 'synthetic' }, (0, experiment_1.createGCService)(), contracts_1.parseMethod); runtime.register({ id: 'uvvis', version: model_1.VERSION, origin: 'synthetic' }, (0, model_1.createUVService)(), model_1.parseMethod); return runtime; }\n\n},\"apps/uvvis/main.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nconst model_1 = require(\"../../domains/uvvis/model\");\nconst composition_1 = require(\"./composition\");\nconst $ = (id) => document.getElementById(id);\nconst field = (id) => $(id);\nlet result = null, record = null, requestId = 0, worker = null, workerUrl = null, open = true, yaw = 35;\nconst defs = [['beam', 'Оптическая схема'], ['lamp', 'Источник'], ['wavelengthNm', 'Длина волны, нм', 190, 800, 1], ['bandwidthNm', 'Спектральная щель, нм', .5, 5, .5], ['concentrationUm', 'Концентрация, мкмоль/л', 0, 200, 1], ['pathCm', 'Оптический путь, см', .1, 5, .1], ['strayFraction', 'Доля рассеянного света', 0, .02, .0001], ['driftPct', 'Дрейф источника, %', -10, 10, 1], ['noiseCounts', 'Шум, отсчёты', 0, 50, 1], ['seed', 'Начальное число генератора', 0, 4294967295, 1]];\nfor (const [key, label, min, max, step] of defs) {\n    const l = document.createElement('label');\n    l.textContent = label;\n    let e;\n    if (key === 'beam' || key === 'lamp') {\n        e = document.createElement('select');\n        const options = key === 'beam' ? [['single', 'Однолучевая'], ['double', 'Двухлучевая']] : [['auto', 'Автоматически'], ['d2', 'Дейтериевая'], ['w', 'Галогенная']];\n        for (const [v, t] of options) {\n            const o = document.createElement('option');\n            o.value = v;\n            o.textContent = t;\n            e.append(o);\n        }\n    }\n    else {\n        e = document.createElement('input');\n        e.type = 'number';\n        e.min = String(min);\n        e.max = String(max);\n        e.step = String(step);\n        e.required = true;\n    }\n    e.id = key;\n    e.value = String(model_1.DEFAULT[key]);\n    l.append(e);\n    $('fields').append(l);\n}\nfunction method() { const o = {}; for (const [k] of defs) {\n    const e = field(k);\n    o[k] = k === 'beam' || k === 'lamp' ? e.value : e.value === '' ? NaN : Number(e.value);\n} return o; }\nfunction setMethod(m) { for (const [k] of defs)\n    field(k).value = String(m[k]); }\nfunction dispose() { worker?.terminate(); worker = null; if (workerUrl)\n    URL.revokeObjectURL(workerUrl); workerUrl = null; }\nfunction run(action = 'run', text) { const rid = ++requestId; record = null; $('export').disabled = true; $('status').textContent = 'Расчёт…'; const input = method(); dispose(); function fallback() { const r = (0, composition_1.createRuntime)(); finish(rid, action === 'replay' ? r.replay(text) : r.run('uvvis', input), 'резервный режим'); } try {\n    workerUrl = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));\n    worker = new Worker(workerUrl);\n    worker.onmessage = e => { if (e.data.requestId === rid) {\n        dispose();\n        finish(rid, e.data.reply, 'Web Worker');\n    } };\n    worker.onerror = e => { e.preventDefault(); if (rid === requestId) {\n        dispose();\n        fallback();\n    } };\n    worker.postMessage({ requestId: rid, action, id: 'uvvis', method: input, text });\n}\ncatch {\n    dispose();\n    fallback();\n} }\nfunction finish(rid, reply, mode) { if (rid !== requestId)\n    return; if (!reply.ok || reply.data.instrumentId !== 'uvvis') {\n    result = null;\n    $('status').textContent = 'Ошибка: ' + (reply.error ?? 'Несовместимый прибор');\n    for (const id of ['abs', 'trans', 'ideal'])\n        $(id).textContent = '—';\n    $('counts').textContent = '';\n    $('plot').replaceChildren();\n    drawScene();\n    return;\n} record = reply.data; result = record.result; setMethod(result.method); const s = result.selected; const f = (v, n) => v === null ? '—' : v.toFixed(n); $('abs').textContent = f(s.absorbance, 4); $('trans').textContent = f(s.transmittancePct, 2); $('ideal').textContent = s.idealAbsorbance.toFixed(4); $('counts').textContent = `Холостой: ${s.blankCounts}; образец: ${s.sampleCounts}; сравнение: ${s.referenceCounts ?? 'нет'}; тёмный: ${result.darkCounts} отсч.`; $('status').textContent = `Расчёт завершён · ${mode} · ${s.status === 'OK' ? 'сигнал допустим' : s.status === 'LOW_SIGNAL' ? 'низкий сигнал' : 'насыщение'}`; $('export').disabled = false; drawScene(); plot(); }\nconst info = { source: 'Дейтериевая лампа для УФ, галогенная для видимой области. Интенсивность в модели условная.', mono: 'Монохроматор выделяет конечную полосу длин волн. Схема обобщённая, без расчёта геометрии решётки.', split: 'В двухлучевом режиме свет направляется в каналы образца и сравнения. Общий дрейф компенсируется отношением сигналов.', sample: 'Кювета с раствором. Поглощение зависит от концентрации, длины оптического пути и молярного коэффициента.', reference: 'Кювета сравнения содержит холостой раствор. В однолучевой схеме канал не используется.', detector: 'Фотодетектор преобразует излучение в отсчёты. Вычитается тёмный сигнал; слишком слабый сигнал помечается недопустимым.' };\nfunction detail(k) { $('detail').textContent = info[k] ?? ''; field('component').value = k; }\nconst objects = [{ id: 'source', name: 'Лампы', pos: [-130, -25, 18], size: [55, 52, 50], color: '#d5ab68' }, { id: 'mono', name: 'Монохроматор', pos: [-58, -25, 18], size: [85, 52, 55], color: '#8db3bf' }, { id: 'split', name: 'Делитель', pos: [42, -3, 20], size: [23, 22, 40], color: '#b7b3c8' }, { id: 'sample', name: 'Образец', pos: [90, -46, 18], size: [23, 22, 55], color: '#80c4bd' }, { id: 'reference', name: 'Сравнение', pos: [90, 36, 18], size: [23, 22, 55], color: '#d3e4e5' }, { id: 'detector', name: 'Фотодетектор', pos: [145, -46, 18], size: [28, 28, 48], color: '#78909d' }, { id: 'detector', name: 'Детектор сравнения', pos: [145, 36, 18], size: [28, 28, 48], color: '#78909d' }];\nfunction drawScene() { const rad = yaw * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad); const project = ([x, y, z]) => [380 + (c * x - s * y) * 1.72, 252 + (s * x + c * y) * .84 - z * 1.60, (s * x + c * y) + z * .4]; const double = (result?.method ?? method()).beam === 'double'; const active = objects.filter((o, i) => double || ![2, 4, 6].includes(i)); const sampleT = (result?.selected.transmittancePct ?? 100) / 100; const faces = []; const cube = (o, opacity = 1) => { const [x, y, z] = o.pos, [w, d, h] = o.size; const pts = [[x, y, z], [x + w, y, z], [x + w, y + d, z], [x, y + d, z], [x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]]; const q = pts.map(project); for (const [i, f] of [[0, [0, 1, 5, 4]], [1, [1, 2, 6, 5]], [2, [2, 3, 7, 6]], [3, [3, 0, 4, 7]], [4, [4, 5, 6, 7]]]) {\n    const p = f.map(j => q[j]);\n    faces.push({ d: p.reduce((a, b) => a + b[2], 0) / p.length, svg: `<polygon data-part=\"${o.id}\" points=\"${p.map(a => a.slice(0, 2).join(',')).join(' ')}\" fill=\"${o.color}\" opacity=\"${opacity}\" stroke=\"#4e6770\" stroke-width=\"1.2\" style=\"filter:brightness(${[.82, .94, .72, .88, 1.08][i]})\"/>` });\n} }; cube({ id: 'base', name: '', pos: [-158, -80, 0], size: [350, 160, 13], color: '#a9bdc3' }); const baseFaces = faces.splice(0).sort((a, b) => a.d - b.d).map(f => f.svg).join(''); if (open)\n    active.forEach(o => cube(o));\nelse\n    cube({ id: 'case', name: '', pos: [-158, -80, 13], size: [350, 160, 92], color: '#c4d1d3' }); const line = (pts, color, op = 1) => `<polyline points=\"${pts.map(p => project(p).slice(0, 2).join(',')).join(' ')}\" stroke=\"${color}\" stroke-width=\"3\" opacity=\"${op}\" fill=\"none\" stroke-linejoin=\"round\"/>`; let rays = ''; if (open) {\n    rays += line(double ? [[-103, 1, 44], [-15, 1, 44], [53, 8, 44]] : [[-103, 1, 44], [-15, 1, 44], [101, -35, 44]], '#d79a32');\n    if (double)\n        rays += line([[53, 8, 44], [76, -35, 44], [101, -35, 44]], '#d79a32');\n    rays += line([[113, -35, 44], [158, -35, 44]], '#d79a32', Math.max(.13, Math.min(1, sampleT)));\n    if (double)\n        rays += line([[42, 8, 44], [76, 47, 44], [158, 47, 44]], '#56a0ad');\n} const labels = open ? active.map(o => { const p = project([o.pos[0] + o.size[0] / 2, o.pos[1] + o.size[1] / 2, o.pos[2] + o.size[2] + 10]); return `<text data-part=\"${o.id}\" x=\"${p[0]}\" y=\"${p[1]}\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"650\" fill=\"#243d48\" stroke=\"#f7f4ec\" stroke-width=\"3\" paint-order=\"stroke\">${o.name}</text>`; }).join('') : ''; $('scene').innerHTML = `<ellipse cx=\"380\" cy=\"302\" rx=\"300\" ry=\"83\" fill=\"#b7c2c0\" opacity=\".25\"/>${baseFaces}${faces.sort((a, b) => a.d - b.d).map(f => f.svg).join('')}${rays}${labels}<text x=\"18\" y=\"25\" fill=\"#526d75\" font-size=\"12\">${double ? 'Два канала' : 'Один канал'} · условная компоновка</text>`; }\nfunction plot() { if (!result)\n    return; const p = result.spectrum; const vals = p.flatMap(x => [x.idealAbsorbance, x.absorbance ?? 0]); const ymin = Math.min(-.1, ...vals), ymax = Math.max(.2, ...vals) * 1.08; const X = (w) => 50 + (w - 190) / 610 * 815, Y = (a) => 220 - (a - ymin) / (ymax - ymin) * 195; function path(key) { let d = '', prev = false; for (const v of p) {\n    const a = v[key];\n    if (a === null) {\n        prev = false;\n        continue;\n    }\n    d += (prev ? 'L' : 'M') + X(v.wavelengthNm).toFixed(2) + ' ' + Y(a).toFixed(2);\n    prev = true;\n} return d; } const grid = Array.from({ length: 5 }, (_, i) => { const a = ymin + (ymax - ymin) * i / 4; return `<path d=\"M50 ${Y(a)}H865\" stroke=\"#e0e8e7\"/><text x=\"45\" y=\"${Y(a) + 4}\" text-anchor=\"end\" font-size=\"11\">${a.toFixed(2)}</text>`; }).join(''); $('plot').innerHTML = `${grid}<path d=\"M50 25V220H865\" fill=\"none\" stroke=\"#637d84\"/><path d=\"${path('idealAbsorbance')}\" fill=\"none\" stroke=\"#9ba7b0\" stroke-dasharray=\"5 4\" stroke-width=\"1.6\"/><path d=\"${path('absorbance')}\" fill=\"none\" stroke=\"#126c66\" stroke-width=\"2\"/><path d=\"M${X(result.method.wavelengthNm)} 25V220\" stroke=\"#c49047\" stroke-dasharray=\"3 3\"/>${[190, 300, 400, 500, 600, 700, 800].map(w => `<text x=\"${X(w)}\" y=\"239\" text-anchor=\"middle\" font-size=\"11\">${w}</text>`).join('')}<text x=\"450\" y=\"256\" font-size=\"12\" text-anchor=\"middle\">Длина волны, нм</text><text x=\"14\" y=\"18\" font-size=\"12\">A</text>`; }\nfunction setYaw(v) { yaw = (v + 360) % 360; field('yaw').value = String(yaw); drawScene(); }\n$('rotateLeft').onclick = () => setYaw(yaw - 30);\n$('rotateRight').onclick = () => setYaw(yaw + 30);\nfield('yaw').oninput = () => setYaw(Number(field('yaw').value));\n$('front').onclick = () => setYaw(35);\n$('shell').onclick = () => { open = !open; $('shell').textContent = open ? 'Закрыть корпус' : 'Открыть корпус'; drawScene(); };\n$('scene').onclick = e => { const k = e.target.getAttribute('data-part'); if (k && info[k])\n    detail(k); };\nfield('component').onchange = () => detail(field('component').value);\n$('run').onclick = () => run();\n$('blank').onclick = () => { field('concentrationUm').value = '0'; run(); };\n$('reset').onclick = () => { setMethod(model_1.DEFAULT); run(); };\n$('export').onclick = () => { if (!record)\n    return; const url = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = 'uvvis-experiment.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };\n$('import').onclick = () => field('file').click();\nfield('file').onchange = async () => { const f = field('file').files?.[0]; if (f) {\n    if (f.size > 20_000_000) {\n        $('status').textContent = 'Файл слишком велик';\n        return;\n    }\n    run('replay', await f.text());\n} field('file').value = ''; };\nwindow.addEventListener('pagehide', dispose);\ndrawScene();\nrun();\n\n},\"apps/uvvis/worker.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nconst composition_1 = require(\"./composition\");\nconst runtime = (0, composition_1.createRuntime)();\nself.onmessage = (event) => { const x = event.data; const reply = x.action === 'replay' ? runtime.replay(x.text) : runtime.run(x.id, x.method); self.postMessage({ requestId: x.requestId, reply }); };\n\n},\"domains/gas-chromatography/contracts.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.LIMITS = exports.DEFAULT = exports.VERSION = void 0;\nexports.parseMethod = parseMethod;\nexports.VERSION = 'gc-mwp/0.0.1';\nexports.DEFAULT = Object.freeze({ lengthM: 30, diameterMm: .25, temperatureC: 100, inletKPa: 200, outletKPa: 101.325, split: 5, noisePA: .015, seed: 42 });\nexports.LIMITS = Object.freeze({ lengthM: [15, 60], diameterMm: [.18, .53], temperatureC: [60, 180], inletKPa: [120, 350], outletKPa: [95, 110], split: [0, 100], noisePA: [0, .1], seed: [0, 4294967295] });\nfunction parseMethod(input) {\n    if (!input || typeof input !== 'object' || Array.isArray(input))\n        throw Error('METHOD.INVALID');\n    const obj = input, out = {};\n    for (const key of Object.keys(exports.LIMITS)) {\n        const v = obj[key], [lo, hi] = exports.LIMITS[key];\n        if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)\n            throw Error('METHOD.RANGE.' + key);\n        out[key] = v;\n    }\n    if (!Number.isInteger(out.seed) || out.inletKPa <= out.outletKPa)\n        throw Error('METHOD.INVALID_PRESSURE_OR_SEED');\n    return out;\n}\n\n},\"domains/gas-chromatography/experiment.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.createGCService = void 0;\nexports.exportExperiment = exportExperiment;\nexports.readReplayRequest = readReplayRequest;\nconst index_1 = require(\"../../packages/application/index\");\nconst contracts_1 = require(\"./contracts\");\nconst model_1 = require(\"./model\");\nconst createGCService = () => new index_1.ExperimentService(contracts_1.parseMethod, { solve: model_1.simulate });\nexports.createGCService = createGCService;\nfunction exportExperiment(result) { return JSON.stringify({ format: 'gc-experiment/v1', version: contracts_1.VERSION, method: result.method, result }, null, 2); }\n/** Replay validates inputs and re-executes. Imported output is not trusted. */\nfunction readReplayRequest(text) { if (text.length > 20_000_000)\n    throw Error('IMPORT.SIZE'); const x = JSON.parse(text); if (x?.format !== 'gc-experiment/v1' || x.version !== contracts_1.VERSION)\n    throw Error('IMPORT.VERSION'); return (0, contracts_1.parseMethod)(x.method); }\n\n},\"domains/gas-chromatography/model.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.PROFILE = void 0;\nexports.flow = flow;\nexports.simulate = simulate;\nexports.visualizationSnapshot = visualizationSnapshot;\nconst contracts_1 = require(\"./contracts\");\nconst index_1 = require(\"../../packages/scientific-core/index\");\n// Synthetic illustrative coefficients, not measured compound/column data.\nconst R = 8.314462618, TREF = 373.15;\nexports.PROFILE = Object.freeze({ id: 'GC.ISOTHERMAL.SYNTHETIC.v1', origin: 'synthetic', viscosityRefPaS: 1.96e-5, viscosityExponent: .7, viscosityRefK: 293.15, Bm2s: 1.2e-5, Cs: 8e-4, baselinePA: .02, analytes: Object.freeze([{ name: 'A', kRef: .55, enthalpyJ: -18000, massUg: .8, response: 8 }, { name: 'B', kRef: 1.6, enthalpyJ: -22000, massUg: 1, response: 10 }, { name: 'C', kRef: 3.2, enthalpyJ: -26000, massUg: .7, response: 9 }].map(a => Object.freeze(a))) });\nfunction flow(m) {\n    const T = m.temperatureC + 273.15, eta = exports.PROFILE.viscosityRefPaS * (T / exports.PROFILE.viscosityRefK) ** exports.PROFILE.viscosityExponent;\n    const f = (0, index_1.capillary)({ lengthM: m.lengthM, radiusM: m.diameterMm / 2000, temperatureK: T, inletPa: m.inletKPa * 1000, outletPa: m.outletKPa * 1000, viscosityPaS: eta });\n    return { flowMlMin: f.outletM3S * 6e7, deadTimeS: f.deadTimeS, velocityCmS: f.meanVelocityMS * 100 };\n}\nfunction simulate(m) {\n    const f = flow(m), u = f.velocityCmS / 100, T = m.temperatureC + 273.15;\n    const H = exports.PROFILE.Bm2s / u + exports.PROFILE.Cs * u, N = m.lengthM / H;\n    const peaks = exports.PROFILE.analytes.map(a => { const k = a.kRef * Math.exp(-a.enthalpyJ / R * (1 / T - 1 / TREF)); const retentionS = f.deadTimeS * (1 + k); const sigmaS = retentionS / Math.sqrt(N); const massUg = a.massUg / (1 + m.split); return Object.freeze({ name: a.name, retentionS, sigmaS, k, plates: N, massUg, areaPAS: a.response * massUg }); });\n    // Adaptive sample spacing resolves narrow peaks; hard cap protects weak devices.\n    const intervalS = Math.min(.2, Math.min(...peaks.map(p => p.sigmaS)) / 8);\n    const end = Math.max(...peaks.map(p => p.retentionS + 7 * p.sigmaS));\n    const count = Math.ceil(end / intervalS) + 1;\n    if (!Number.isFinite(count) || count > 200000)\n        throw Error('SOLVER.RESOURCE_LIMIT');\n    const rng = (0, index_1.uniform)(m.seed), signal = [];\n    for (let i = 0; i < count; i++) {\n        const t = i * intervalS;\n        let y = exports.PROFILE.baselinePA;\n        for (const p of peaks)\n            y += (0, index_1.gaussian)(t, p.retentionS, p.sigmaS, p.areaPAS);\n        signal.push(y + m.noisePA * (2 * rng() - 1));\n    }\n    return Object.freeze({ version: contracts_1.VERSION, profileId: exports.PROFILE.id, origin: 'synthetic', method: Object.freeze({ ...m }), ...f, peaks: Object.freeze(peaks), intervalS, signal: Object.freeze(signal), events: Object.freeze(['METHOD_VALIDATED', 'ACQUISITION_STARTED', 'ACQUISITION_COMPLETED']) });\n}\n/** Center of an equilibrium zone, not its spatial width. Invert integrated p(z). */\nfunction visualizationSnapshot(r, timeS) {\n    const t = Math.max(0, Math.min(timeS, (r.signal.length - 1) * r.intervalS));\n    const p = r.method.inletKPa, q = r.method.outletKPa;\n    return { timeS: t, zones: r.peaks.map(a => { const f = Math.min(1, t / a.retentionS); const localP = Math.cbrt(p ** 3 - f * (p ** 3 - q ** 3)); return { name: a.name, fraction: Math.max(0, Math.min(1, (p * p - localP * localP) / (p * p - q * q))), exited: t >= a.retentionS }; }) };\n}\n\n},\"domains/uvvis/model.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.createUVService = exports.DEFAULT = exports.VERSION = void 0;\nexports.parseMethod = parseMethod;\nexports.epsilon = epsilon;\nexports.lampIntensity = lampIntensity;\nexports.transmission = transmission;\nexports.solve = solve;\nconst index_1 = require(\"../../packages/application/index\");\nexports.VERSION = 'uvvis/0.1.0';\nexports.DEFAULT = { beam: 'double', lamp: 'auto', wavelengthNm: 546, bandwidthNm: 2, concentrationUm: 40, pathCm: 1, strayFraction: 0.0001, driftPct: 2, seed: 42, noiseCounts: 0 };\nconst limits = { wavelengthNm: [190, 800], bandwidthNm: [.5, 5], concentrationUm: [0, 200], pathCm: [.1, 5], strayFraction: [0, .02], driftPct: [-10, 10], seed: [0, 4294967295], noiseCounts: [0, 50] };\nfunction parseMethod(x) { if (!x || typeof x !== 'object' || Array.isArray(x))\n    throw Error('METHOD.INVALID'); const o = x; if (o.beam !== 'single' && o.beam !== 'double')\n    throw Error('METHOD.BEAM'); if (o.lamp !== 'auto' && o.lamp !== 'd2' && o.lamp !== 'w')\n    throw Error('METHOD.LAMP'); const m = { beam: o.beam, lamp: o.lamp }; for (const key of Object.keys(limits)) {\n    const v = o[key], [lo, hi] = limits[key];\n    if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)\n        throw Error('METHOD.RANGE.' + key);\n    m[key] = v;\n} if (!Number.isInteger(m.seed))\n    throw Error('METHOD.SEED'); return m; }\nconst gauss = (x, center, sigma) => Math.exp(-.5 * ((x - center) / sigma) ** 2);\n// Synthetic absorptivity, M^-1 cm^-1. No substance identification.\nfunction epsilon(w) { return 18000 * gauss(w, 265, 18) + 12500 * gauss(w, 546, 28); }\nfunction lampIntensity(w, lamp) { const l = lamp === 'auto' ? (w < 340 ? 'd2' : 'w') : lamp; return l === 'd2' ? Math.max(.000001, gauss(w, 255, 75)) : Math.max(.000001, gauss(w, 650, 170)); }\nfunction transmission(m, w) { let incident = 0, transmitted = 0; for (let i = -20; i <= 20; i++) {\n    const v = w + i * m.bandwidthNm / 20;\n    const weight = gauss(v, w, m.bandwidthNm / 2.354820045) * lampIntensity(v, m.lamp === 'auto' ? (w < 340 ? 'd2' : 'w') : m.lamp);\n    incident += weight;\n    transmitted += weight * 10 ** (-epsilon(v) * m.concentrationUm * 1e-6 * m.pathCm);\n} return (transmitted / incident + m.strayFraction) / (1 + m.strayFraction); }\nfunction rng(seed) { let x = seed >>> 0; return () => { x = (Math.imul(1664525, x) + 1013904223) >>> 0; return x / 4294967296; }; }\nfunction solve(m) { const random = rng(m.seed); const dark = 50; const point = (w) => { const base = 28000 * lampIntensity(w, m.lamp); const drift = 1 + m.driftPct / 100; const t = transmission(m, w); const counts = (value) => Math.max(0, Math.min(65535, Math.round(dark + value + (2 * random() - 1) * m.noiseCounts))); const blank = counts(base), sample = counts(base * drift * t), reference = m.beam === 'double' ? counts(base * drift) : null; const divisor = (reference ?? blank) - dark; const numerator = sample - dark; const status = (blank === 65535 || sample === 65535 || reference === 65535) ? 'SATURATION' : (divisor < 100 || numerator <= 0) ? 'LOW_SIGNAL' : 'OK'; const ratio = status === 'OK' ? numerator / divisor : null; return { wavelengthNm: w, absorbance: ratio === null ? null : -Math.log10(ratio), transmittancePct: ratio === null ? null : ratio * 100, idealAbsorbance: epsilon(w) * m.concentrationUm * 1e-6 * m.pathCm, blankCounts: blank, sampleCounts: sample, referenceCounts: reference, status }; }; const selected = point(m.wavelengthNm); const spectrum = Array.from({ length: 611 }, (_, i) => point(190 + i)); return { version: exports.VERSION, profileId: 'UVVIS.SYNTHETIC.v1', origin: 'synthetic', darkCounts: dark, method: { ...m }, selected, spectrum }; }\nconst createUVService = () => new index_1.ExperimentService(parseMethod, { solve });\nexports.createUVService = createUVService;\n\n},\"packages/application/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.ExperimentService = void 0;\n/** Validated use case; concrete solver injected at composition root. */\nclass ExperimentService {\n    parse;\n    solver;\n    constructor(parse, solver) {\n        this.parse = parse;\n        this.solver = solver;\n    }\n    run(input) { try {\n        return { ok: true, data: this.solver.solve(this.parse(input)) };\n    }\n    catch (e) {\n        return { ok: false, error: e instanceof Error ? e.message : 'SOLVER.UNKNOWN' };\n    } }\n}\nexports.ExperimentService = ExperimentService;\n\n},\"packages/contracts/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\n\n},\"packages/experiment-runtime/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.ExperimentRuntime = void 0;\nclass ExperimentRuntime {\n    entries = new Map();\n    register(descriptor, service, parse) { if (!/^[a-z][a-z0-9-]*$/.test(descriptor.id) || !descriptor.version || descriptor.origin !== 'synthetic' || this.entries.has(descriptor.id))\n        throw Error('RUNTIME.DESCRIPTOR'); this.entries.set(descriptor.id, { descriptor: { ...descriptor }, service, parse }); }\n    list() { return [...this.entries.values()].map(e => ({ ...e.descriptor })); }\n    run(id, input) { try {\n        const e = this.entries.get(id);\n        if (!e)\n            throw Error('RUNTIME.UNKNOWN_INSTRUMENT');\n        const method = e.parse(input);\n        const r = e.service.run(method);\n        if (!r.ok)\n            return r;\n        return { ok: true, data: { format: 'stem-experiment/v1', instrumentId: id, modelVersion: e.descriptor.version, origin: e.descriptor.origin, method, result: r.data } };\n    }\n    catch (e) {\n        return { ok: false, error: e instanceof Error ? e.message : 'RUNTIME.UNKNOWN' };\n    } }\n    replay(text) { try {\n        if (text.length > 20_000_000)\n            throw Error('IMPORT.SIZE');\n        const x = JSON.parse(text);\n        const e = this.entries.get(x?.instrumentId);\n        if (x?.format !== 'stem-experiment/v1' || !e || x.modelVersion !== e.descriptor.version)\n            throw Error('IMPORT.VERSION');\n        return this.run(x.instrumentId, x.method);\n    }\n    catch (e) {\n        return { ok: false, error: e instanceof Error ? e.message : 'IMPORT.INVALID' };\n    } }\n}\nexports.ExperimentRuntime = ExperimentRuntime;\n\n},\"packages/scientific-core/index.js\":function(require,module,exports){\n\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.capillary = capillary;\nexports.uniform = uniform;\nexports.gaussian = gaussian;\nfunction capillary(c) {\n    const { lengthM: L, radiusM: r, temperatureK: T, inletPa: p, outletPa: q, viscosityPaS: eta } = c;\n    if (![L, r, T, p, q, eta].every(x => Number.isFinite(x) && x > 0) || p <= q)\n        throw Error('PHYSICS.CAPILLARY_RANGE');\n    const R = 8.314462618, n = Math.PI * r ** 4 * (p * p - q * q) / (16 * eta * L * R * T);\n    const Q = n * R * T / q, uOut = Q / (Math.PI * r * r);\n    const avgPressure = 2 * (p * p + p * q + q * q) / (3 * (p + q));\n    const deadTimeS = L * avgPressure / (uOut * q);\n    return { outletM3S: Q, deadTimeS, meanVelocityMS: L / deadTimeS };\n}\nfunction uniform(seed) { let state = seed >>> 0; return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; }; }\nfunction gaussian(t, center, sigma, area) { return area / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-.5 * ((t - center) / sigma) ** 2); }\n\n}};const cache={};function load(id){if(cache[id])return cache[id].exports;if(!modules[id])throw Error('Unknown module '+id);const m=cache[id]={exports:{}};modules[id](function(rel){const p=id.split('/');p.pop();for(const s of rel.split('/')){if(s==='..')p.pop();else if(s!=='.')p.push(s);}return load(p.join('/')+(rel.endsWith('.js')?'':'.js'));},m,m.exports);return m.exports;}load(\"apps/uvvis/worker.js\");})();";
+(function(){const modules={"apps/uvvis/composition.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createRuntime = createRuntime;
+const index_1 = require("../../packages/experiment-runtime/index");
+const experiment_1 = require("../../domains/gas-chromatography/experiment");
+const contracts_1 = require("../../domains/gas-chromatography/contracts");
+const model_1 = require("../../domains/uvvis/model");
+function createRuntime() { const runtime = new index_1.ExperimentRuntime(); runtime.register({ id: 'gc-isothermal', version: contracts_1.VERSION, origin: 'synthetic' }, (0, experiment_1.createGCService)(), contracts_1.parseMethod); runtime.register({ id: 'uvvis', version: model_1.VERSION, origin: 'synthetic' }, (0, model_1.createUVService)(), model_1.parseMethod); return runtime; }
+
+},"apps/uvvis/main.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const model_1 = require("../../domains/uvvis/model");
+const composition_1 = require("./composition");
+const $ = (id) => document.getElementById(id);
+const field = (id) => $(id);
+let result = null, record = null, requestId = 0, worker = null, workerUrl = null, open = true, yaw = 35;
+const defs = [['beam', 'Оптическая схема'], ['lamp', 'Источник'], ['wavelengthNm', 'Длина волны, нм', 190, 800, 1], ['bandwidthNm', 'Спектральная щель, нм', .5, 5, .5], ['concentrationUm', 'Концентрация, мкмоль/л', 0, 200, 1], ['pathCm', 'Оптический путь, см', .1, 5, .1], ['strayFraction', 'Доля рассеянного света', 0, .02, .0001], ['driftPct', 'Дрейф источника, %', -10, 10, 1], ['noiseCounts', 'Шум, отсчёты', 0, 50, 1], ['seed', 'Начальное число генератора', 0, 4294967295, 1]];
+for (const [key, label, min, max, step] of defs) {
+    const l = document.createElement('label');
+    l.textContent = label;
+    let e;
+    if (key === 'beam' || key === 'lamp') {
+        e = document.createElement('select');
+        const options = key === 'beam' ? [['single', 'Однолучевая'], ['double', 'Двухлучевая']] : [['auto', 'Автоматически'], ['d2', 'Дейтериевая'], ['w', 'Галогенная']];
+        for (const [v, t] of options) {
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = t;
+            e.append(o);
+        }
+    }
+    else {
+        e = document.createElement('input');
+        e.type = 'number';
+        e.min = String(min);
+        e.max = String(max);
+        e.step = String(step);
+        e.required = true;
+    }
+    e.id = key;
+    e.value = String(model_1.DEFAULT[key]);
+    l.append(e);
+    $('fields').append(l);
+}
+function method() { const o = {}; for (const [k] of defs) {
+    const e = field(k);
+    o[k] = k === 'beam' || k === 'lamp' ? e.value : e.value === '' ? NaN : Number(e.value);
+} return o; }
+function setMethod(m) { for (const [k] of defs)
+    field(k).value = String(m[k]); }
+function dispose() { worker?.terminate(); worker = null; if (workerUrl)
+    URL.revokeObjectURL(workerUrl); workerUrl = null; }
+function run(action = 'run', text) { const rid = ++requestId; record = null; $('export').disabled = true; $('status').textContent = 'Расчёт…'; const input = method(); dispose(); function fallback() { const r = (0, composition_1.createRuntime)(); finish(rid, action === 'replay' ? r.replay(text) : r.run('uvvis', input), 'резервный режим'); } try {
+    workerUrl = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
+    worker = new Worker(workerUrl);
+    worker.onmessage = e => { if (e.data.requestId === rid) {
+        dispose();
+        finish(rid, e.data.reply, 'Web Worker');
+    } };
+    worker.onerror = e => { e.preventDefault(); if (rid === requestId) {
+        dispose();
+        fallback();
+    } };
+    worker.postMessage({ requestId: rid, action, id: 'uvvis', method: input, text });
+}
+catch {
+    dispose();
+    fallback();
+} }
+function finish(rid, reply, mode) { if (rid !== requestId)
+    return; if (!reply.ok || reply.data.instrumentId !== 'uvvis') {
+    result = null;
+    $('status').textContent = 'Ошибка: ' + (reply.error ?? 'Несовместимый прибор');
+    for (const id of ['abs', 'trans', 'ideal'])
+        $(id).textContent = '—';
+    $('counts').textContent = '';
+    $('plot').replaceChildren();
+    drawScene();
+    return;
+} record = reply.data; result = record.result; setMethod(result.method); const s = result.selected; const f = (v, n) => v === null ? '—' : v.toFixed(n); $('abs').textContent = f(s.absorbance, 4); $('trans').textContent = f(s.transmittancePct, 2); $('ideal').textContent = s.idealAbsorbance.toFixed(4); $('counts').textContent = `Холостой: ${s.blankCounts}; образец: ${s.sampleCounts}; сравнение: ${s.referenceCounts ?? 'нет'}; тёмный: ${result.darkCounts} отсч.`; $('status').textContent = `Расчёт завершён · ${mode} · ${s.status === 'OK' ? 'сигнал допустим' : s.status === 'LOW_SIGNAL' ? 'низкий сигнал' : 'насыщение'}`; $('export').disabled = false; drawScene(); plot(); }
+const info = { source: 'Дейтериевая лампа для УФ, галогенная для видимой области. Интенсивность в модели условная.', mono: 'Монохроматор выделяет конечную полосу длин волн. Схема обобщённая, без расчёта геометрии решётки.', split: 'В двухлучевом режиме свет направляется в каналы образца и сравнения. Общий дрейф компенсируется отношением сигналов.', sample: 'Кювета с раствором. Поглощение зависит от концентрации, длины оптического пути и молярного коэффициента.', reference: 'Кювета сравнения содержит холостой раствор. В однолучевой схеме канал не используется.', detector: 'Фотодетектор преобразует излучение в отсчёты. Вычитается тёмный сигнал; слишком слабый сигнал помечается недопустимым.' };
+function detail(k) { $('detail').textContent = info[k] ?? ''; field('component').value = k; }
+const objects = [{ id: 'source', name: 'Лампы', pos: [-130, -25, 18], size: [55, 52, 50], color: '#d5ab68' }, { id: 'mono', name: 'Монохроматор', pos: [-58, -25, 18], size: [85, 52, 55], color: '#8db3bf' }, { id: 'split', name: 'Делитель', pos: [42, -3, 20], size: [23, 22, 40], color: '#b7b3c8' }, { id: 'sample', name: 'Образец', pos: [90, -46, 18], size: [23, 22, 55], color: '#80c4bd' }, { id: 'reference', name: 'Сравнение', pos: [90, 36, 18], size: [23, 22, 55], color: '#d3e4e5' }, { id: 'detector', name: 'Фотодетектор', pos: [145, -46, 18], size: [28, 28, 48], color: '#78909d' }, { id: 'detector', name: 'Детектор сравнения', pos: [145, 36, 18], size: [28, 28, 48], color: '#78909d' }];
+function drawScene() { const rad = yaw * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad); const project = ([x, y, z]) => [380 + (c * x - s * y) * 1.72, 252 + (s * x + c * y) * .84 - z * 1.60, (s * x + c * y) + z * .4]; const double = (result?.method ?? method()).beam === 'double'; const active = objects.filter((o, i) => double || ![2, 4, 6].includes(i)); const sampleT = (result?.selected.transmittancePct ?? 100) / 100; const faces = []; const cube = (o, opacity = 1) => { const [x, y, z] = o.pos, [w, d, h] = o.size; const pts = [[x, y, z], [x + w, y, z], [x + w, y + d, z], [x, y + d, z], [x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]]; const q = pts.map(project); for (const [i, f] of [[0, [0, 1, 5, 4]], [1, [1, 2, 6, 5]], [2, [2, 3, 7, 6]], [3, [3, 0, 4, 7]], [4, [4, 5, 6, 7]]]) {
+    const p = f.map(j => q[j]);
+    faces.push({ d: p.reduce((a, b) => a + b[2], 0) / p.length, svg: `<polygon data-part="${o.id}" points="${p.map(a => a.slice(0, 2).join(',')).join(' ')}" fill="${o.color}" opacity="${opacity}" stroke="#4e6770" stroke-width="1.2" style="filter:brightness(${[.82, .94, .72, .88, 1.08][i]})"/>` });
+} }; cube({ id: 'base', name: '', pos: [-158, -80, 0], size: [350, 160, 13], color: '#a9bdc3' }); const baseFaces = faces.splice(0).sort((a, b) => a.d - b.d).map(f => f.svg).join(''); if (open)
+    active.forEach(o => cube(o));
+else
+    cube({ id: 'case', name: '', pos: [-158, -80, 13], size: [350, 160, 92], color: '#c4d1d3' }); const line = (pts, color, op = 1) => `<polyline points="${pts.map(p => project(p).slice(0, 2).join(',')).join(' ')}" stroke="${color}" stroke-width="3" opacity="${op}" fill="none" stroke-linejoin="round"/>`; let rays = ''; if (open) {
+    rays += line(double ? [[-103, 1, 44], [-15, 1, 44], [53, 8, 44]] : [[-103, 1, 44], [-15, 1, 44], [101, -35, 44]], '#d79a32');
+    if (double)
+        rays += line([[53, 8, 44], [76, -35, 44], [101, -35, 44]], '#d79a32');
+    rays += line([[113, -35, 44], [158, -35, 44]], '#d79a32', Math.max(.13, Math.min(1, sampleT)));
+    if (double)
+        rays += line([[42, 8, 44], [76, 47, 44], [158, 47, 44]], '#56a0ad');
+} const labels = open ? active.map(o => { const p = project([o.pos[0] + o.size[0] / 2, o.pos[1] + o.size[1] / 2, o.pos[2] + o.size[2] + 10]); return `<text data-part="${o.id}" x="${p[0]}" y="${p[1]}" text-anchor="middle" font-size="11" font-weight="650" fill="#243d48" stroke="#f7f4ec" stroke-width="3" paint-order="stroke">${o.name}</text>`; }).join('') : ''; $('scene').innerHTML = `<ellipse cx="380" cy="302" rx="300" ry="83" fill="#b7c2c0" opacity=".25"/>${baseFaces}${faces.sort((a, b) => a.d - b.d).map(f => f.svg).join('')}${rays}${labels}<text x="18" y="25" fill="#526d75" font-size="12">${double ? 'Два канала' : 'Один канал'} · условная компоновка</text>`; }
+function plot() { if (!result)
+    return; const p = result.spectrum; const vals = p.flatMap(x => [x.idealAbsorbance, x.absorbance ?? 0]); const ymin = Math.min(-.1, ...vals), ymax = Math.max(.2, ...vals) * 1.08; const X = (w) => 50 + (w - 190) / 610 * 815, Y = (a) => 220 - (a - ymin) / (ymax - ymin) * 195; function path(key) { let d = '', prev = false; for (const v of p) {
+    const a = v[key];
+    if (a === null) {
+        prev = false;
+        continue;
+    }
+    d += (prev ? 'L' : 'M') + X(v.wavelengthNm).toFixed(2) + ' ' + Y(a).toFixed(2);
+    prev = true;
+} return d; } const grid = Array.from({ length: 5 }, (_, i) => { const a = ymin + (ymax - ymin) * i / 4; return `<path d="M50 ${Y(a)}H865" stroke="#e0e8e7"/><text x="45" y="${Y(a) + 4}" text-anchor="end" font-size="11">${a.toFixed(2)}</text>`; }).join(''); $('plot').innerHTML = `${grid}<path d="M50 25V220H865" fill="none" stroke="#637d84"/><path d="${path('idealAbsorbance')}" fill="none" stroke="#9ba7b0" stroke-dasharray="5 4" stroke-width="1.6"/><path d="${path('absorbance')}" fill="none" stroke="#126c66" stroke-width="2"/><path d="M${X(result.method.wavelengthNm)} 25V220" stroke="#c49047" stroke-dasharray="3 3"/>${[190, 300, 400, 500, 600, 700, 800].map(w => `<text x="${X(w)}" y="239" text-anchor="middle" font-size="11">${w}</text>`).join('')}<text x="450" y="256" font-size="12" text-anchor="middle">Длина волны, нм</text><text x="14" y="18" font-size="12">A</text>`; }
+function setYaw(v) { yaw = (v + 360) % 360; field('yaw').value = String(yaw); drawScene(); }
+$('rotateLeft').onclick = () => setYaw(yaw - 30);
+$('rotateRight').onclick = () => setYaw(yaw + 30);
+field('yaw').oninput = () => setYaw(Number(field('yaw').value));
+$('front').onclick = () => setYaw(35);
+$('shell').onclick = () => { open = !open; $('shell').textContent = open ? 'Закрыть корпус' : 'Открыть корпус'; drawScene(); };
+$('scene').onclick = e => { const k = e.target.getAttribute('data-part'); if (k && info[k])
+    detail(k); };
+field('component').onchange = () => detail(field('component').value);
+$('run').onclick = () => run();
+$('blank').onclick = () => { field('concentrationUm').value = '0'; run(); };
+$('reset').onclick = () => { setMethod(model_1.DEFAULT); run(); };
+$('export').onclick = () => { if (!record)
+    return; const url = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = 'uvvis-experiment.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+$('import').onclick = () => field('file').click();
+field('file').onchange = async () => { const f = field('file').files?.[0]; if (f) {
+    if (f.size > 20_000_000) {
+        $('status').textContent = 'Файл слишком велик';
+        return;
+    }
+    run('replay', await f.text());
+} field('file').value = ''; };
+window.addEventListener('pagehide', dispose);
+drawScene();
+run();
+
+},"apps/uvvis/worker.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const composition_1 = require("./composition");
+const runtime = (0, composition_1.createRuntime)();
+self.onmessage = (event) => { const x = event.data; const reply = x.action === 'replay' ? runtime.replay(x.text) : runtime.run(x.id, x.method); self.postMessage({ requestId: x.requestId, reply }); };
+
+},"domains/gas-chromatography/contracts.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LIMITS = exports.DEFAULT = exports.VERSION = void 0;
+exports.parseMethod = parseMethod;
+exports.VERSION = 'gc-mwp/0.0.1';
+exports.DEFAULT = Object.freeze({ lengthM: 30, diameterMm: .25, temperatureC: 100, inletKPa: 200, outletKPa: 101.325, split: 5, noisePA: .015, seed: 42 });
+exports.LIMITS = Object.freeze({ lengthM: [15, 60], diameterMm: [.18, .53], temperatureC: [60, 180], inletKPa: [120, 350], outletKPa: [95, 110], split: [0, 100], noisePA: [0, .1], seed: [0, 4294967295] });
+function parseMethod(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input))
+        throw Error('METHOD.INVALID');
+    const obj = input, out = {};
+    for (const key of Object.keys(exports.LIMITS)) {
+        const v = obj[key], [lo, hi] = exports.LIMITS[key];
+        if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)
+            throw Error('METHOD.RANGE.' + key);
+        out[key] = v;
+    }
+    if (!Number.isInteger(out.seed) || out.inletKPa <= out.outletKPa)
+        throw Error('METHOD.INVALID_PRESSURE_OR_SEED');
+    return out;
+}
+
+},"domains/gas-chromatography/experiment.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createGCService = void 0;
+exports.exportExperiment = exportExperiment;
+exports.readReplayRequest = readReplayRequest;
+const index_1 = require("../../packages/application/index");
+const contracts_1 = require("./contracts");
+const model_1 = require("./model");
+const createGCService = () => new index_1.ExperimentService(contracts_1.parseMethod, { solve: model_1.simulate });
+exports.createGCService = createGCService;
+function exportExperiment(result) { return JSON.stringify({ format: 'gc-experiment/v1', version: contracts_1.VERSION, method: result.method, result }, null, 2); }
+/** Replay validates inputs and re-executes. Imported output is not trusted. */
+function readReplayRequest(text) { if (text.length > 20_000_000)
+    throw Error('IMPORT.SIZE'); const x = JSON.parse(text); if (x?.format !== 'gc-experiment/v1' || x.version !== contracts_1.VERSION)
+    throw Error('IMPORT.VERSION'); return (0, contracts_1.parseMethod)(x.method); }
+
+},"domains/gas-chromatography/model.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PROFILE = void 0;
+exports.flow = flow;
+exports.simulate = simulate;
+exports.visualizationSnapshot = visualizationSnapshot;
+const contracts_1 = require("./contracts");
+const index_1 = require("../../packages/scientific-core/index");
+// Synthetic illustrative coefficients, not measured compound/column data.
+const R = 8.314462618, TREF = 373.15;
+exports.PROFILE = Object.freeze({ id: 'GC.ISOTHERMAL.SYNTHETIC.v1', origin: 'synthetic', viscosityRefPaS: 1.96e-5, viscosityExponent: .7, viscosityRefK: 293.15, Bm2s: 1.2e-5, Cs: 8e-4, baselinePA: .02, analytes: Object.freeze([{ name: 'A', kRef: .55, enthalpyJ: -18000, massUg: .8, response: 8 }, { name: 'B', kRef: 1.6, enthalpyJ: -22000, massUg: 1, response: 10 }, { name: 'C', kRef: 3.2, enthalpyJ: -26000, massUg: .7, response: 9 }].map(a => Object.freeze(a))) });
+function flow(m) {
+    const T = m.temperatureC + 273.15, eta = exports.PROFILE.viscosityRefPaS * (T / exports.PROFILE.viscosityRefK) ** exports.PROFILE.viscosityExponent;
+    const f = (0, index_1.capillary)({ lengthM: m.lengthM, radiusM: m.diameterMm / 2000, temperatureK: T, inletPa: m.inletKPa * 1000, outletPa: m.outletKPa * 1000, viscosityPaS: eta });
+    return { flowMlMin: f.outletM3S * 6e7, deadTimeS: f.deadTimeS, velocityCmS: f.meanVelocityMS * 100 };
+}
+function simulate(m) {
+    const f = flow(m), u = f.velocityCmS / 100, T = m.temperatureC + 273.15;
+    const H = exports.PROFILE.Bm2s / u + exports.PROFILE.Cs * u, N = m.lengthM / H;
+    const peaks = exports.PROFILE.analytes.map(a => { const k = a.kRef * Math.exp(-a.enthalpyJ / R * (1 / T - 1 / TREF)); const retentionS = f.deadTimeS * (1 + k); const sigmaS = retentionS / Math.sqrt(N); const massUg = a.massUg / (1 + m.split); return Object.freeze({ name: a.name, retentionS, sigmaS, k, plates: N, massUg, areaPAS: a.response * massUg }); });
+    // Adaptive sample spacing resolves narrow peaks; hard cap protects weak devices.
+    const intervalS = Math.min(.2, Math.min(...peaks.map(p => p.sigmaS)) / 8);
+    const end = Math.max(...peaks.map(p => p.retentionS + 7 * p.sigmaS));
+    const count = Math.ceil(end / intervalS) + 1;
+    if (!Number.isFinite(count) || count > 200000)
+        throw Error('SOLVER.RESOURCE_LIMIT');
+    const rng = (0, index_1.uniform)(m.seed), signal = [];
+    for (let i = 0; i < count; i++) {
+        const t = i * intervalS;
+        let y = exports.PROFILE.baselinePA;
+        for (const p of peaks)
+            y += (0, index_1.gaussian)(t, p.retentionS, p.sigmaS, p.areaPAS);
+        signal.push(y + m.noisePA * (2 * rng() - 1));
+    }
+    return Object.freeze({ version: contracts_1.VERSION, profileId: exports.PROFILE.id, origin: 'synthetic', method: Object.freeze({ ...m }), ...f, peaks: Object.freeze(peaks), intervalS, signal: Object.freeze(signal), events: Object.freeze(['METHOD_VALIDATED', 'ACQUISITION_STARTED', 'ACQUISITION_COMPLETED']) });
+}
+/** Center of an equilibrium zone, not its spatial width. Invert integrated p(z). */
+function visualizationSnapshot(r, timeS) {
+    const t = Math.max(0, Math.min(timeS, (r.signal.length - 1) * r.intervalS));
+    const p = r.method.inletKPa, q = r.method.outletKPa;
+    return { timeS: t, zones: r.peaks.map(a => { const f = Math.min(1, t / a.retentionS); const localP = Math.cbrt(p ** 3 - f * (p ** 3 - q ** 3)); return { name: a.name, fraction: Math.max(0, Math.min(1, (p * p - localP * localP) / (p * p - q * q))), exited: t >= a.retentionS }; }) };
+}
+
+},"domains/uvvis/model.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createUVService = exports.DEFAULT = exports.VERSION = void 0;
+exports.parseMethod = parseMethod;
+exports.epsilon = epsilon;
+exports.lampIntensity = lampIntensity;
+exports.transmission = transmission;
+exports.solve = solve;
+const index_1 = require("../../packages/application/index");
+exports.VERSION = 'uvvis/0.1.0';
+exports.DEFAULT = { beam: 'double', lamp: 'auto', wavelengthNm: 546, bandwidthNm: 2, concentrationUm: 40, pathCm: 1, strayFraction: 0.0001, driftPct: 2, seed: 42, noiseCounts: 0 };
+const limits = { wavelengthNm: [190, 800], bandwidthNm: [.5, 5], concentrationUm: [0, 200], pathCm: [.1, 5], strayFraction: [0, .02], driftPct: [-10, 10], seed: [0, 4294967295], noiseCounts: [0, 50] };
+function parseMethod(x) { if (!x || typeof x !== 'object' || Array.isArray(x))
+    throw Error('METHOD.INVALID'); const o = x; if (o.beam !== 'single' && o.beam !== 'double')
+    throw Error('METHOD.BEAM'); if (o.lamp !== 'auto' && o.lamp !== 'd2' && o.lamp !== 'w')
+    throw Error('METHOD.LAMP'); const m = { beam: o.beam, lamp: o.lamp }; for (const key of Object.keys(limits)) {
+    const v = o[key], [lo, hi] = limits[key];
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)
+        throw Error('METHOD.RANGE.' + key);
+    m[key] = v;
+} if (!Number.isInteger(m.seed))
+    throw Error('METHOD.SEED'); return m; }
+const gauss = (x, center, sigma) => Math.exp(-.5 * ((x - center) / sigma) ** 2);
+// Synthetic absorptivity, M^-1 cm^-1. No substance identification.
+function epsilon(w) { return 18000 * gauss(w, 265, 18) + 12500 * gauss(w, 546, 28); }
+function lampIntensity(w, lamp) { const l = lamp === 'auto' ? (w < 340 ? 'd2' : 'w') : lamp; return l === 'd2' ? Math.max(.000001, gauss(w, 255, 75)) : Math.max(.000001, gauss(w, 650, 170)); }
+function transmission(m, w) { let incident = 0, transmitted = 0; for (let i = -20; i <= 20; i++) {
+    const v = w + i * m.bandwidthNm / 20;
+    const weight = gauss(v, w, m.bandwidthNm / 2.354820045) * lampIntensity(v, m.lamp === 'auto' ? (w < 340 ? 'd2' : 'w') : m.lamp);
+    incident += weight;
+    transmitted += weight * 10 ** (-epsilon(v) * m.concentrationUm * 1e-6 * m.pathCm);
+} return (transmitted / incident + m.strayFraction) / (1 + m.strayFraction); }
+function rng(seed) { let x = seed >>> 0; return () => { x = (Math.imul(1664525, x) + 1013904223) >>> 0; return x / 4294967296; }; }
+function solve(m) { const random = rng(m.seed); const dark = 50; const point = (w) => { const base = 28000 * lampIntensity(w, m.lamp); const drift = 1 + m.driftPct / 100; const t = transmission(m, w); const counts = (value) => Math.max(0, Math.min(65535, Math.round(dark + value + (2 * random() - 1) * m.noiseCounts))); const blank = counts(base), sample = counts(base * drift * t), reference = m.beam === 'double' ? counts(base * drift) : null; const divisor = (reference ?? blank) - dark; const numerator = sample - dark; const status = (blank === 65535 || sample === 65535 || reference === 65535) ? 'SATURATION' : (divisor < 100 || numerator <= 0) ? 'LOW_SIGNAL' : 'OK'; const ratio = status === 'OK' ? numerator / divisor : null; return { wavelengthNm: w, absorbance: ratio === null ? null : -Math.log10(ratio), transmittancePct: ratio === null ? null : ratio * 100, idealAbsorbance: epsilon(w) * m.concentrationUm * 1e-6 * m.pathCm, blankCounts: blank, sampleCounts: sample, referenceCounts: reference, status }; }; const selected = point(m.wavelengthNm); const spectrum = Array.from({ length: 611 }, (_, i) => point(190 + i)); return { version: exports.VERSION, profileId: 'UVVIS.SYNTHETIC.v1', origin: 'synthetic', darkCounts: dark, method: { ...m }, selected, spectrum }; }
+const createUVService = () => new index_1.ExperimentService(parseMethod, { solve });
+exports.createUVService = createUVService;
+
+},"packages/application/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ExperimentService = void 0;
+/** Validated use case; concrete solver injected at composition root. */
+class ExperimentService {
+    parse;
+    solver;
+    constructor(parse, solver) {
+        this.parse = parse;
+        this.solver = solver;
+    }
+    run(input) { try {
+        return { ok: true, data: this.solver.solve(this.parse(input)) };
+    }
+    catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'SOLVER.UNKNOWN' };
+    } }
+}
+exports.ExperimentService = ExperimentService;
+
+},"packages/contracts/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},"packages/experiment-runtime/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ExperimentRuntime = void 0;
+class ExperimentRuntime {
+    entries = new Map();
+    register(descriptor, service, parse) { if (!/^[a-z][a-z0-9-]*$/.test(descriptor.id) || !descriptor.version || descriptor.origin !== 'synthetic' || this.entries.has(descriptor.id))
+        throw Error('RUNTIME.DESCRIPTOR'); this.entries.set(descriptor.id, { descriptor: { ...descriptor }, service, parse }); }
+    list() { return [...this.entries.values()].map(e => ({ ...e.descriptor })); }
+    run(id, input) { try {
+        const e = this.entries.get(id);
+        if (!e)
+            throw Error('RUNTIME.UNKNOWN_INSTRUMENT');
+        const method = e.parse(input);
+        const r = e.service.run(method);
+        if (!r.ok)
+            return r;
+        return { ok: true, data: { format: 'stem-experiment/v1', instrumentId: id, modelVersion: e.descriptor.version, origin: e.descriptor.origin, method, result: r.data } };
+    }
+    catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'RUNTIME.UNKNOWN' };
+    } }
+    replay(text) { try {
+        if (text.length > 20_000_000)
+            throw Error('IMPORT.SIZE');
+        const x = JSON.parse(text);
+        const e = this.entries.get(x?.instrumentId);
+        if (x?.format !== 'stem-experiment/v1' || !e || x.modelVersion !== e.descriptor.version)
+            throw Error('IMPORT.VERSION');
+        return this.run(x.instrumentId, x.method);
+    }
+    catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'IMPORT.INVALID' };
+    } }
+}
+exports.ExperimentRuntime = ExperimentRuntime;
+
+},"packages/scientific-core/index.js":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.capillary = capillary;
+exports.uniform = uniform;
+exports.gaussian = gaussian;
+function capillary(c) {
+    const { lengthM: L, radiusM: r, temperatureK: T, inletPa: p, outletPa: q, viscosityPaS: eta } = c;
+    if (![L, r, T, p, q, eta].every(x => Number.isFinite(x) && x > 0) || p <= q)
+        throw Error('PHYSICS.CAPILLARY_RANGE');
+    const R = 8.314462618, n = Math.PI * r ** 4 * (p * p - q * q) / (16 * eta * L * R * T);
+    const Q = n * R * T / q, uOut = Q / (Math.PI * r * r);
+    const avgPressure = 2 * (p * p + p * q + q * q) / (3 * (p + q));
+    const deadTimeS = L * avgPressure / (uOut * q);
+    return { outletM3S: Q, deadTimeS, meanVelocityMS: L / deadTimeS };
+}
+function uniform(seed) { let state = seed >>> 0; return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; }; }
+function gaussian(t, center, sigma, area) { return area / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-.5 * ((t - center) / sigma) ** 2); }
+
+}};const cache={};function load(id){if(cache[id])return cache[id].exports;if(!modules[id])throw Error('Unknown module '+id);const m=cache[id]={exports:{}};modules[id](function(rel){const p=id.split('/');p.pop();for(const s of rel.split('/')){if(s==='..')p.pop();else if(s!=='.')p.push(s);}return load(p.join('/')+(rel.endsWith('.js')?'':'.js'));},m,m.exports);return m.exports;}load("apps/uvvis/main.js");})();</script></body></html>

@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.json","compilerOptions":{"outDir":".runtime-build"},"include":["packages/**/*.ts","domains/**/*.ts","apps/uvvis/**/*.ts"],"exclude":[]}
